@@ -28,6 +28,8 @@ int circleRetryAttempts = 0;
 bool isDying = false;
 float eraseTime = 0.2f; // in seconds
 float dyingElapsed = 0;
+bool hasStarted = false;
+double endTimer = 0;
 
 
 bool hasHit(float centerX, float centerY)
@@ -66,11 +68,22 @@ while (!Raylib.WindowShouldClose())
     Vector2 mousePoint = Raylib.GetMousePosition();
     bool boost = false;
     float dt = Raylib.GetFrameTime();
-    double time = Raylib.GetTime();
+    // double time = Raylib.GetTime();
     int currentScreenWidth = Raylib.GetScreenWidth();
     int currentScreenHeight = Raylib.GetScreenHeight();
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
+
+    bool anyKey = Raylib.GetKeyPressed() != 0;
+    bool anyMouse = Raylib.IsMouseButtonPressed(MouseButton.Left)
+                 || Raylib.IsMouseButtonPressed(MouseButton.Right)
+                 || Raylib.IsMouseButtonPressed(MouseButton.Middle);
+
+    if (!hasStarted && (anyKey || anyMouse))
+    {
+        hasStarted = true;
+        endTimer = Raylib.GetTime() + 30;
+    }
 
     if (Raylib.IsMouseButtonPressed(MouseButton.Left))
     {
@@ -117,6 +130,7 @@ while (!Raylib.WindowShouldClose())
             dyingElapsed = 0;
             radius = 25;
             setNewCircle();
+            endTimer = Raylib.GetTime() + 30;
         }
     }
 
@@ -124,7 +138,12 @@ while (!Raylib.WindowShouldClose())
     Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
     Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
     Raylib.DrawText($" {score}", 90, 20, isDying ? 22 : 18, isDying ? Color.Gold : Color.White);
-    Raylib.DrawText($"Time: {(int)time:D2}", 20, 40, 16, Color.White);
+    if (hasStarted && endTimer != 0)
+    {
+        double currentTime = Raylib.GetTime();
+        double diff = endTimer - currentTime;
+        Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
+    }
     Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
     Raylib.EndDrawing();
 }
