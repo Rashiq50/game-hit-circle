@@ -110,6 +110,15 @@ while (!Raylib.WindowShouldClose())
         int fontSize = 62;
         int textSize = Raylib.MeasureText(gameOverText, fontSize);
         Raylib.DrawText("Game Over!", currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Red);
+
+        const string replayText = "[R] Replay";
+        const string quitText = "[Q] Quit";
+        int optionFontSize = 28;
+        int optionY = currentScreenHeight / 2 + fontSize / 2 + 20;
+        int replaySize = Raylib.MeasureText(replayText, optionFontSize);
+        int quitSize = Raylib.MeasureText(quitText, optionFontSize);
+        Raylib.DrawText(replayText, currentScreenWidth / 2 - replaySize / 2, optionY, optionFontSize, Color.Gray);
+        Raylib.DrawText(quitText, currentScreenWidth / 2 - quitSize / 2, optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
     if (!isPlaying && hasStarted)
     {
