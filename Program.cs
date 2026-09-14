@@ -1,250 +1,294 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Raylib_cs;
 
-const int screenWidth = 1000;
-const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
-Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
+Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.SetTargetFPS(60);
-Color cyan = new Color(0, 255, 255, 255);
-// circle values
-float centerX = 0;
-float centerY = 0;
-float radius = 25;
 
-// cube values
-float topLeftX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
-float topLeftY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
-int sizeX = 40;
-int sizeY = 40;
+var game = new Game();
 
-// game values
-int score = 0;
-const float boost_multiplier = 2.5f;
-const float speed = 100f;
-const int circleRetryAttemptCap = 10;
-int circleRetryAttempts = 0;
-
-bool isDying = false;
-float eraseTime = 0.2f; // in seconds
-float dyingElapsed = 0;
-bool hasStarted = false;
-bool isPlaying = false;
-// bool gameOver = false;
-double endTimer = 0;
-const int playTime = 5;
-int bonusTime = 0;
-
-// score popup values
-bool popupActive = false;
-float popupX = 0;
-float popupY = 0;
-float popupElapsed = 0;
-const float popupScaleTime = 0.15f; // scale up duration
-const float popupHoldTime = 0.5f;   // time popup stays at full size before fading
-const float popupFadeTime = 0.3f;   // fade out duration
-const int popupFontSize = 24;
-const string popupText = "+10";
-
-
-bool hasHit(float centerX, float centerY)
+while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 {
-    return topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius;
-}
+    game.Update(Raylib.GetFrameTime());
 
-bool isClicked(float mouseX, float mouseY)
-{
-    return mouseX <= centerX + radius && mouseX >= centerX - radius && mouseY >= centerY - radius && mouseY <= centerY + radius;
-}
-
-void setNewCircle()
-{
-    float newCenterX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
-    float newCenterY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
-    while (hasHit(newCenterX, newCenterY) && circleRetryAttempts <= circleRetryAttemptCap)
-    {
-        newCenterX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
-        newCenterY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
-        circleRetryAttempts++;
-    }
-    centerX = newCenterX;
-    centerY = newCenterY;
-    circleRetryAttempts = 0;
-}
-
-void scoreUp()
-{
-    score += 10;
-    bonusTime = (int)endTimer - (int)Raylib.GetTime();
-    isDying = true;
-}
-
-void startGame()
-{
-    hasStarted = true;
-    endTimer = Raylib.GetTime() + playTime;
-    isPlaying = true;
-    setNewCircle();
-}
-
-while (!Raylib.WindowShouldClose())
-{
-    Vector2 mousePoint = Raylib.GetMousePosition();
-    bool boost = false;
-    float dt = Raylib.GetFrameTime();
-    int currentScreenWidth = Raylib.GetScreenWidth();
-    int currentScreenHeight = Raylib.GetScreenHeight();
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
-
-    // Welcome screen handle & text
-    if (!hasStarted && !isPlaying)
-    {
-        const string startText = "Press any key to continue";
-        int fontSize = 48;
-        int textSize = Raylib.MeasureText(startText, fontSize);
-        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
-    }
-    bool anyKey = Raylib.GetKeyPressed() != 0;
-    bool anyMouse = Raylib.IsMouseButtonPressed(MouseButton.Left)
-                 || Raylib.IsMouseButtonPressed(MouseButton.Right)
-                 || Raylib.IsMouseButtonPressed(MouseButton.Middle);
-
-    if (!hasStarted && (anyKey || anyMouse)) startGame();
-
-    // Game over handle & text
-    if (Raylib.GetTime() > endTimer && hasStarted)
-    {
-        isPlaying = false;
-        endTimer = 0;
-        const string gameOverText = "Game Over!";
-        int fontSize = 62;
-        int textSize = Raylib.MeasureText(gameOverText, fontSize);
-        Raylib.DrawText("Game Over!", currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Red);
-
-        const string replayText = "[R] Replay";
-        const string quitText = "[Q] Quit";
-        int optionFontSize = 28;
-        int optionY = currentScreenHeight / 2 + fontSize / 2 + 20;
-        int replaySize = Raylib.MeasureText(replayText, optionFontSize);
-        int quitSize = Raylib.MeasureText(quitText, optionFontSize);
-        Raylib.DrawText(replayText, currentScreenWidth / 2 - replaySize / 2, optionY, optionFontSize, Color.Gray);
-        Raylib.DrawText(quitText, currentScreenWidth / 2 - quitSize / 2, optionY + optionFontSize + 10, optionFontSize, Color.Gray);
-    }
-    if (!isPlaying && hasStarted)
-    {
-        if (Raylib.IsKeyDown(KeyboardKey.R)) startGame();
-        if (Raylib.IsKeyDown(KeyboardKey.Q)) Raylib.CloseWindow();
-    }
-
-    // Main game
-    if (isPlaying)
-    {
-        if (Raylib.IsMouseButtonPressed(MouseButton.Left))
-        {
-            if (isClicked(mousePoint[0], mousePoint[1]) && !isDying) scoreUp();
-        }
-
-        if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
-        float currentSpeed = boost ? speed * boost_multiplier : speed;
-
-        if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
-        if (topLeftX + sizeX > currentScreenWidth)
-        {
-            topLeftX = currentScreenWidth - sizeX;
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= currentSpeed * dt;
-        if (topLeftX <= 0)
-        {
-            topLeftX = 0;
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= currentSpeed * dt;
-        if (topLeftY <= 0)
-        {
-            topLeftY = 0;
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += currentSpeed * dt;
-        if (topLeftY + sizeY > currentScreenHeight)
-        {
-            topLeftY = currentScreenHeight - sizeY;
-        }
-
-        if (hasHit(centerX, centerY) && !isDying) scoreUp();
-
-        if (isDying)
-        {
-            if (dyingElapsed <= eraseTime)
-            {
-                float t = dyingElapsed / eraseTime;
-                radius *= 1 - t;
-                dyingElapsed += dt;
-            }
-            else
-            {
-                isDying = false;
-                dyingElapsed = 0;
-                radius = 25;
-                popupActive = true;
-                popupX = centerX;
-                popupY = centerY;
-                popupElapsed = 0;
-                setNewCircle();
-                endTimer = Raylib.GetTime() + playTime + bonusTime;
-                bonusTime = 0;
-            }
-        }
-
-        Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
-        Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
-
-        // Floating "+10" popup with animation
-        if (popupActive)
-        {
-            float scale;
-            float alpha;
-            if (popupElapsed < popupScaleTime)
-            {
-                scale = popupElapsed / popupScaleTime;
-                alpha = 1;
-            }
-            else if (popupElapsed < popupScaleTime + popupHoldTime)
-            {
-                scale = 1;
-                alpha = 1;
-            }
-            else if (popupElapsed < popupScaleTime + popupHoldTime + popupFadeTime)
-            {
-                scale = 1;
-                alpha = 1 - (popupElapsed - popupScaleTime - popupHoldTime) / popupFadeTime;
-            }
-            else
-            {
-                scale = 0;
-                alpha = 0;
-                popupActive = false;
-            }
-
-            if (popupActive)
-            {
-                int fontSize = Math.Max(1, (int)(popupFontSize * scale));
-                int textWidth = Raylib.MeasureText(popupText, fontSize);
-                float drift = popupElapsed * 20; // float upward slowly
-                Raylib.DrawText(popupText, (int)(popupX - textWidth / 2f), (int)(popupY - fontSize / 2f - drift), fontSize, Raylib.Fade(Color.Green, alpha));
-                popupElapsed += dt;
-            }
-        }
-        Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
-        Raylib.DrawText($" {score}", 90, 20, 18, Color.White);
-        if (hasStarted && endTimer != 0)
-        {
-            double currentTime = Raylib.GetTime();
-            double diff = endTimer - currentTime;
-            Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
-        }
-        Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
-    }
-
+    game.Draw();
     Raylib.EndDrawing();
 }
 
 Raylib.CloseWindow();
+
+enum GameState { Welcome, Playing, GameOver }
+
+static class Screen
+{
+    const int SpawnMargin = 50;
+
+    public static int Width => Raylib.GetScreenWidth();
+    public static int Height => Raylib.GetScreenHeight();
+
+    public static Vector2 RandomPoint() => new(
+        Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
+        Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+
+    public static void DrawCenteredText(string text, int y, int fontSize, Color color)
+    {
+        int width = Raylib.MeasureText(text, fontSize);
+        Raylib.DrawText(text, Width / 2 - width / 2, y, fontSize, color);
+    }
+}
+
+/// <summary>The player-controlled cube (WASD to move, Left Shift to boost).</summary>
+class Player
+{
+    public const int Size = 40;
+    const float Speed = 100f;
+    const float BoostMultiplier = 2.5f;
+
+    public Vector2 Position = Screen.RandomPoint();
+
+    public void Update(float dt)
+    {
+        float speed = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? Speed * BoostMultiplier : Speed;
+        float step = speed * dt;
+
+        if (Raylib.IsKeyDown(KeyboardKey.D)) Position.X += step;
+        if (Raylib.IsKeyDown(KeyboardKey.A)) Position.X -= step;
+        if (Raylib.IsKeyDown(KeyboardKey.W)) Position.Y -= step;
+        if (Raylib.IsKeyDown(KeyboardKey.S)) Position.Y += step;
+
+        Position.X = Math.Clamp(Position.X, 0, Screen.Width - Size);
+        Position.Y = Math.Clamp(Position.Y, 0, Screen.Height - Size);
+    }
+
+    public void Draw() => Raylib.DrawRectangleV(Position, new Vector2(Size, Size), Color.DarkBlue);
+}
+
+/// <summary>The circle the player has to hit, either by clicking it or by touching it with the cube.</summary>
+class Target
+{
+    const float FullRadius = 25;
+    const float ShrinkTime = 0.2f; // seconds
+    const int RespawnAttemptCap = 10;
+
+    public Vector2 Center;
+    public float Radius = FullRadius;
+    public bool IsShrinking { get; private set; }
+    float shrinkElapsed;
+
+    /// <summary>Uses the circle's bounding square, matching the original hit test.</summary>
+    public bool ContainsPoint(Vector2 p) =>
+        p.X >= Center.X - Radius && p.X <= Center.X + Radius &&
+        p.Y >= Center.Y - Radius && p.Y <= Center.Y + Radius;
+
+    public bool Overlaps(Player player) => Overlaps(Center, player);
+
+    bool Overlaps(Vector2 center, Player player) =>
+        player.Position.X <= center.X + Radius && player.Position.X + Player.Size >= center.X - Radius &&
+        player.Position.Y <= center.Y + Radius && player.Position.Y + Player.Size >= center.Y - Radius;
+
+    /// <summary>Moves the circle to a random spot, trying a few times to avoid spawning on top of the player.</summary>
+    public void Respawn(Player player)
+    {
+        Vector2 candidate = Screen.RandomPoint();
+        for (int attempt = 0; attempt <= RespawnAttemptCap && Overlaps(candidate, player); attempt++)
+            candidate = Screen.RandomPoint();
+
+        Center = candidate;
+        Radius = FullRadius;
+        IsShrinking = false;
+        shrinkElapsed = 0;
+    }
+
+    public void StartShrinking() => IsShrinking = true;
+
+    /// <summary>Advances the shrink animation. Returns true on the frame the animation finishes.</summary>
+    public bool UpdateShrink(float dt)
+    {
+        if (!IsShrinking) return false;
+
+        if (shrinkElapsed <= ShrinkTime)
+        {
+            Radius *= 1 - shrinkElapsed / ShrinkTime;
+            shrinkElapsed += dt;
+            return false;
+        }
+
+        return true;
+    }
+
+    public void Draw() => Raylib.DrawCircleV(Center, Radius, Color.Beige);
+}
+
+/// <summary>Floating "+10" text that scales in, holds, fades out and drifts upward.</summary>
+class ScorePopup
+{
+    const float ScaleTime = 0.15f;
+    const float HoldTime = 0.5f;
+    const float FadeTime = 0.3f;
+    const float DriftSpeed = 20f; // pixels per second
+    const int FontSize = 24;
+    const string Text = "+10";
+
+    bool active;
+    Vector2 origin;
+    float elapsed;
+
+    public void Show(Vector2 at)
+    {
+        active = true;
+        origin = at;
+        elapsed = 0;
+    }
+
+    public void Update(float dt)
+    {
+        if (!active) return;
+        elapsed += dt;
+        if (elapsed >= ScaleTime + HoldTime + FadeTime) active = false;
+    }
+
+    public void Draw()
+    {
+        if (!active) return;
+
+        float scale = elapsed < ScaleTime ? elapsed / ScaleTime : 1;
+        float alpha = elapsed < ScaleTime + HoldTime ? 1 : 1 - (elapsed - ScaleTime - HoldTime) / FadeTime;
+
+        int fontSize = Math.Max(1, (int)(FontSize * scale));
+        int width = Raylib.MeasureText(Text, fontSize);
+        float drift = elapsed * DriftSpeed;
+        Raylib.DrawText(Text,
+            (int)(origin.X - width / 2f),
+            (int)(origin.Y - fontSize / 2f - drift),
+            fontSize,
+            Raylib.Fade(Color.Green, alpha));
+    }
+}
+
+class Game
+{
+    const int PlayTime = 5; // seconds per round, extended by leftover time on each hit
+    const int PointsPerHit = 10;
+
+    readonly Player player = new();
+    readonly Target target = new();
+    readonly ScorePopup popup = new();
+
+    GameState state = GameState.Welcome;
+    int score;
+    double endTime;
+    int bonusTime;
+
+    public bool QuitRequested { get; private set; }
+
+    public void Update(float dt)
+    {
+        switch (state)
+        {
+            case GameState.Welcome:
+                if (AnyInputPressed()) StartRound();
+                break;
+
+            case GameState.Playing:
+                UpdatePlaying(dt);
+                break;
+
+            case GameState.GameOver:
+                if (Raylib.IsKeyDown(KeyboardKey.R)) StartRound();
+                if (Raylib.IsKeyDown(KeyboardKey.Q)) QuitRequested = true;
+                break;
+        }
+    }
+
+    public void Draw()
+    {
+        switch (state)
+        {
+            case GameState.Welcome:
+                DrawWelcome();
+                break;
+
+            case GameState.Playing:
+                player.Draw();
+                target.Draw();
+                popup.Draw();
+                DrawHud();
+                break;
+
+            case GameState.GameOver:
+                DrawGameOver();
+                break;
+        }
+    }
+
+    static bool AnyInputPressed() =>
+        Raylib.GetKeyPressed() != 0
+        || Raylib.IsMouseButtonPressed(MouseButton.Left)
+        || Raylib.IsMouseButtonPressed(MouseButton.Right)
+        || Raylib.IsMouseButtonPressed(MouseButton.Middle);
+
+    void StartRound()
+    {
+        state = GameState.Playing;
+        endTime = Raylib.GetTime() + PlayTime;
+        target.Respawn(player);
+    }
+
+    void UpdatePlaying(float dt)
+    {
+        if (Raylib.GetTime() > endTime)
+        {
+            state = GameState.GameOver;
+            return;
+        }
+
+        player.Update(dt);
+        popup.Update(dt);
+
+        bool clickedTarget = Raylib.IsMouseButtonPressed(MouseButton.Left) && target.ContainsPoint(Raylib.GetMousePosition());
+        if (!target.IsShrinking && (clickedTarget || target.Overlaps(player))) OnHit();
+
+        if (target.UpdateShrink(dt))
+        {
+            popup.Show(target.Center);
+            target.Respawn(player);
+            endTime = Raylib.GetTime() + PlayTime + bonusTime;
+            bonusTime = 0;
+        }
+    }
+
+    void OnHit()
+    {
+        score += PointsPerHit;
+        bonusTime = (int)endTime - (int)Raylib.GetTime();
+        target.StartShrinking();
+    }
+
+    static void DrawWelcome()
+    {
+        const int fontSize = 48;
+        Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 - fontSize / 2, fontSize, Color.Gray);
+    }
+
+    static void DrawGameOver()
+    {
+        const int titleSize = 62;
+        const int optionSize = 28;
+
+        Screen.DrawCenteredText("Game Over!", Screen.Height / 2 - titleSize / 2, titleSize, Color.Red);
+
+        int optionY = Screen.Height / 2 + titleSize / 2 + 20;
+        Screen.DrawCenteredText("[R] Replay", optionY, optionSize, Color.Gray);
+        Screen.DrawCenteredText("[Q] Quit", optionY + optionSize + 10, optionSize, Color.Gray);
+    }
+
+    void DrawHud()
+    {
+        int timeLeft = (int)(endTime - Raylib.GetTime());
+        Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
+        Raylib.DrawText($"Time: {timeLeft:D2}", 20, 40, 16, Color.White);
+        Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
+    }
+}
