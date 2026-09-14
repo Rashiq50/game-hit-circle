@@ -29,7 +29,10 @@ bool isDying = false;
 float eraseTime = 0.2f; // in seconds
 float dyingElapsed = 0;
 bool hasStarted = false;
+bool isPlaying = false;
+// bool gameOver = false;
 double endTimer = 0;
+const int playTime = 5;
 
 
 bool hasHit(float centerX, float centerY)
@@ -79,72 +82,84 @@ while (!Raylib.WindowShouldClose())
                  || Raylib.IsMouseButtonPressed(MouseButton.Right)
                  || Raylib.IsMouseButtonPressed(MouseButton.Middle);
 
-    if (!hasStarted && (anyKey || anyMouse))
+    if (!isPlaying && (anyKey || anyMouse))
     {
         hasStarted = true;
-        endTimer = Raylib.GetTime() + 30;
+        endTimer = Raylib.GetTime() + playTime;
+        isPlaying = true;
     }
 
-    if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+    if (Raylib.GetTime() > endTimer && hasStarted)
     {
-        if (isClicked(mousePoint[0], mousePoint[1]) && !isDying) scoreUp();
+        isPlaying = false;
+        endTimer = 0;
+        Raylib.DrawText("Game Over!", currentScreenWidth / 2, currentScreenHeight / 2, 62, Color.Red);
     }
 
-    if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
-    float currentSpeed = boost ? speed * boost_multiplier : speed;
-
-    if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
-    if (topLeftX + sizeX > currentScreenWidth)
+    if (isPlaying)
     {
-        topLeftX = currentScreenWidth - sizeX;
-    }
-    if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= currentSpeed * dt;
-    if (topLeftX <= 0)
-    {
-        topLeftX = 0;
-    }
-    if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= currentSpeed * dt;
-    if (topLeftY <= 0)
-    {
-        topLeftY = 0;
-    }
-    if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += currentSpeed * dt;
-    if (topLeftY + sizeY > currentScreenHeight)
-    {
-        topLeftY = currentScreenHeight - sizeY;
-    }
-
-    if (hasHit(centerX, centerY) && !isDying) scoreUp();
-
-    if (isDying)
-    {
-        if (dyingElapsed <= eraseTime)
+        if (Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
-            float t = dyingElapsed / eraseTime;
-            radius *= 1 - t;
-            dyingElapsed += dt;
+            if (isClicked(mousePoint[0], mousePoint[1]) && !isDying) scoreUp();
         }
-        else
+
+        if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
+        float currentSpeed = boost ? speed * boost_multiplier : speed;
+
+        if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
+        if (topLeftX + sizeX > currentScreenWidth)
         {
-            isDying = false;
-            dyingElapsed = 0;
-            radius = 25;
-            setNewCircle();
-            endTimer = Raylib.GetTime() + 30;
+            topLeftX = currentScreenWidth - sizeX;
         }
+        if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= currentSpeed * dt;
+        if (topLeftX <= 0)
+        {
+            topLeftX = 0;
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= currentSpeed * dt;
+        if (topLeftY <= 0)
+        {
+            topLeftY = 0;
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += currentSpeed * dt;
+        if (topLeftY + sizeY > currentScreenHeight)
+        {
+            topLeftY = currentScreenHeight - sizeY;
+        }
+
+        if (hasHit(centerX, centerY) && !isDying) scoreUp();
+
+        if (isDying)
+        {
+            if (dyingElapsed <= eraseTime)
+            {
+                float t = dyingElapsed / eraseTime;
+                radius *= 1 - t;
+                dyingElapsed += dt;
+            }
+            else
+            {
+                isDying = false;
+                dyingElapsed = 0;
+                radius = 25;
+                setNewCircle();
+                endTimer = Raylib.GetTime() + playTime;
+            }
+        }
+
+        Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
+        Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
+        Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
+        Raylib.DrawText($" {score}", 90, 20, isDying ? 22 : 18, isDying ? Color.Gold : Color.White);
+        if (hasStarted && endTimer != 0)
+        {
+            double currentTime = Raylib.GetTime();
+            double diff = endTimer - currentTime;
+            Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
+        }
+        Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
     }
 
-    Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
-    Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
-    Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
-    Raylib.DrawText($" {score}", 90, 20, isDying ? 22 : 18, isDying ? Color.Gold : Color.White);
-    if (hasStarted && endTimer != 0)
-    {
-        double currentTime = Raylib.GetTime();
-        double diff = endTimer - currentTime;
-        Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
-    }
-    Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
     Raylib.EndDrawing();
 }
 
