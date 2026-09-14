@@ -8,13 +8,13 @@ Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
 Color cyan = new Color(0, 255, 255, 255);
 // circle values
-float centerX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
-float centerY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
+float centerX = 0;
+float centerY = 0;
 float radius = 25;
 
 // cube values
-float topLeftX = 10f;
-float topLeftY = 20f;
+float topLeftX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
+float topLeftY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
 int sizeX = 40;
 int sizeY = 40;
 
@@ -68,6 +68,14 @@ void scoreUp()
     isDying = true;
 }
 
+void startGame()
+{
+    hasStarted = true;
+    endTimer = Raylib.GetTime() + playTime;
+    isPlaying = true;
+    setNewCircle();
+}
+
 while (!Raylib.WindowShouldClose())
 {
     Vector2 mousePoint = Raylib.GetMousePosition();
@@ -78,28 +86,22 @@ while (!Raylib.WindowShouldClose())
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
 
-    bool anyKey = Raylib.GetKeyPressed() != 0;
-    bool anyMouse = Raylib.IsMouseButtonPressed(MouseButton.Left)
-                 || Raylib.IsMouseButtonPressed(MouseButton.Right)
-                 || Raylib.IsMouseButtonPressed(MouseButton.Middle);
-
-    if (!isPlaying && (anyKey || anyMouse))
-    {
-        hasStarted = true;
-        endTimer = Raylib.GetTime() + playTime;
-        isPlaying = true;
-    }
-
-    // Welcome screen
-    if (!hasStarted)
+    // Welcome screen handle & text
+    if (!hasStarted && !isPlaying)
     {
         const string startText = "Press any key to continue";
         int fontSize = 48;
         int textSize = Raylib.MeasureText(startText, fontSize);
         Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
     }
+    bool anyKey = Raylib.GetKeyPressed() != 0;
+    bool anyMouse = Raylib.IsMouseButtonPressed(MouseButton.Left)
+                 || Raylib.IsMouseButtonPressed(MouseButton.Right)
+                 || Raylib.IsMouseButtonPressed(MouseButton.Middle);
 
-    // Game over
+    if (!hasStarted && (anyKey || anyMouse)) startGame();
+
+    // Game over handle & text
     if (Raylib.GetTime() > endTimer && hasStarted)
     {
         isPlaying = false;
@@ -108,6 +110,11 @@ while (!Raylib.WindowShouldClose())
         int fontSize = 62;
         int textSize = Raylib.MeasureText(gameOverText, fontSize);
         Raylib.DrawText("Game Over!", currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Red);
+    }
+    if (!isPlaying && hasStarted)
+    {
+        if (Raylib.IsKeyDown(KeyboardKey.R)) startGame();
+        if (Raylib.IsKeyDown(KeyboardKey.Q)) Raylib.CloseWindow();
     }
 
     // Main game
