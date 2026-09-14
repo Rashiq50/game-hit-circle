@@ -25,12 +25,9 @@ const float speed = 100f;
 const int circleRetryAttemptCap = 10;
 int circleRetryAttempts = 0;
 
-
 bool hasHit(float centerX, float centerY)
 {
-    if (topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius) return true;
-
-    return false;
+    return topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius;
 }
 
 while (!Raylib.WindowShouldClose())
