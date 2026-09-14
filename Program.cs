@@ -6,7 +6,6 @@ const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
-Color cyan = new Color(0, 255, 255, 255);
 // circle values
 float centerX = 0;
 float centerY = 0;
@@ -24,13 +23,11 @@ const float boost_multiplier = 2.5f;
 const float speed = 100f;
 const int circleRetryAttemptCap = 10;
 int circleRetryAttempts = 0;
-
 bool isDying = false;
-float eraseTime = 0.2f; // in seconds
+float eraseTime = 0.2f;
 float dyingElapsed = 0;
 bool hasStarted = false;
 bool isPlaying = false;
-// bool gameOver = false;
 double endTimer = 0;
 const int playTime = 5;
 int bonusTime = 0;
@@ -81,6 +78,7 @@ void scoreUp()
 
 void startGame()
 {
+    score = 0;
     hasStarted = true;
     endTimer = Raylib.GetTime() + playTime;
     isPlaying = true;
