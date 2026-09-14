@@ -20,8 +20,16 @@ int sizeY = 40;
 
 // game values
 int score = 0;
-float boost_multiplier = 2.5f;
-float speed = 100f;
+const float boost_multiplier = 2.5f;
+const float speed = 100f;
+
+
+bool hasHit(float centerX, float centerY)
+{
+    if (topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius) return true;
+
+    return false;
+}
 
 while (!Raylib.WindowShouldClose())
 {
@@ -34,34 +42,27 @@ while (!Raylib.WindowShouldClose())
     Raylib.ClearBackground(Color.Black);
 
     if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
-    speed = boost ? speed * boost_multiplier : speed;
+    float currentSpeed = boost ? speed * boost_multiplier : speed;
 
-    if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += speed * dt;
+    if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
     if (topLeftX + sizeX > currentScreenWidth)
     {
         topLeftX = currentScreenWidth - sizeX;
     }
-    if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= speed * dt;
+    if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= currentSpeed * dt;
     if (topLeftX <= 0)
     {
         topLeftX = 0;
     }
-    if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= speed * dt;
+    if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= currentSpeed * dt;
     if (topLeftY <= 0)
     {
         topLeftY = 0;
     }
-    if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += speed * dt;
+    if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += currentSpeed * dt;
     if (topLeftY + sizeY > currentScreenHeight)
     {
         topLeftY = currentScreenHeight - sizeY;
-    }
-
-    bool hasHit(float centerX, float centerY)
-    {
-        if (topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius) return true;
-
-        return false;
     }
 
     if (hasHit(centerX, centerY))
