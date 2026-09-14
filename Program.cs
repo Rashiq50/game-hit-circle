@@ -48,6 +48,8 @@ class Player
 
     public Vector2 Position = Screen.RandomPoint();
 
+    public void Reset() => Position = Screen.RandomPoint();
+
     public void Update(float dt)
     {
         float speed = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? Speed * BoostMultiplier : Speed;
@@ -108,13 +110,14 @@ class Target
     {
         if (!IsShrinking) return false;
 
-        if (shrinkElapsed <= ShrinkTime)
+        shrinkElapsed += dt;
+        if (shrinkElapsed < ShrinkTime)
         {
-            Radius *= 1 - shrinkElapsed / ShrinkTime;
-            shrinkElapsed += dt;
+            Radius = FullRadius * (1 - shrinkElapsed / ShrinkTime); // linear shrink to zero
             return false;
         }
 
+        Radius = 0;
         return true;
     }
 
@@ -232,7 +235,10 @@ class Game
     void StartRound()
     {
         state = GameState.Playing;
+        score = 0;
+        bonusTime = 0;
         endTime = Raylib.GetTime() + PlayTime;
+        player.Reset();
         target.Respawn(player);
     }
 
