@@ -6,18 +6,22 @@ const int screenHeight = 540;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
+
+// circle values
 float centerX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
 float centerY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
 int radius = 25;
-
-float speed;
 
 // cube values
 float topLeftX = 10f;
 float topLeftY = 20f;
 int sizeX = 40;
 int sizeY = 40;
+
+// game values
 int score = 0;
+float boost_multiplier = 2.5f;
+float speed = 10f;
 
 while (!Raylib.WindowShouldClose())
 {
@@ -30,7 +34,7 @@ while (!Raylib.WindowShouldClose())
     Raylib.ClearBackground(Color.Black);
 
     if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
-    speed = boost ? 400f : 10f;
+    speed = boost ? speed * boost_multiplier : speed;
 
     if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += speed * dt;
     if (topLeftX + sizeX > currentScreenWidth)
@@ -55,10 +59,8 @@ while (!Raylib.WindowShouldClose())
 
     bool hasHit(float centerX, float centerY)
     {
-        if (topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius)
-        {
-            return true;
-        }
+        if (topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius) return true;
+
         return false;
     }
 
@@ -78,6 +80,7 @@ while (!Raylib.WindowShouldClose())
         centerY = newCenterY;
     }
 
+    // later work on showing proper hit feedback with proper timing etc. for now ignore
     if (isHit)
     {
         Raylib.DrawText("Hit !!", 20, currentScreenHeight - 10, 18, Color.Red);
