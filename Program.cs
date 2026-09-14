@@ -21,7 +21,7 @@ int sizeY = 40;
 // game values
 int score = 0;
 float boost_multiplier = 2.5f;
-float speed = 10f;
+float speed = 100f;
 
 while (!Raylib.WindowShouldClose())
 {
