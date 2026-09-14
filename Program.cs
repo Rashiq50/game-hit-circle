@@ -33,6 +33,7 @@ bool isPlaying = false;
 // bool gameOver = false;
 double endTimer = 0;
 const int playTime = 5;
+int bonusTime = 0;
 
 
 bool hasHit(float centerX, float centerY)
@@ -63,6 +64,7 @@ void setNewCircle()
 void scoreUp()
 {
     score += 10;
+    bonusTime = (int)endTimer - (int)Raylib.GetTime();
     isDying = true;
 }
 
@@ -88,6 +90,16 @@ while (!Raylib.WindowShouldClose())
         isPlaying = true;
     }
 
+    // Welcome screen
+    if (!hasStarted)
+    {
+        const string startText = "Press any key to continue";
+        int fontSize = 48;
+        int textSize = Raylib.MeasureText(startText, fontSize);
+        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
+    }
+
+    // Game over
     if (Raylib.GetTime() > endTimer && hasStarted)
     {
         isPlaying = false;
@@ -98,6 +110,7 @@ while (!Raylib.WindowShouldClose())
         Raylib.DrawText("Game Over!", currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Red);
     }
 
+    // Main game
     if (isPlaying)
     {
         if (Raylib.IsMouseButtonPressed(MouseButton.Left))
@@ -145,14 +158,15 @@ while (!Raylib.WindowShouldClose())
                 dyingElapsed = 0;
                 radius = 25;
                 setNewCircle();
-                endTimer = Raylib.GetTime() + playTime;
+                endTimer = Raylib.GetTime() + playTime + bonusTime;
+                bonusTime = 0;
             }
         }
 
         Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
         Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
         Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
-        Raylib.DrawText($" {score}", 90, 20, isDying ? 22 : 18, isDying ? Color.Gold : Color.White);
+        Raylib.DrawText($" {score}", 90, 20, 18, Color.White);
         if (hasStarted && endTimer != 0)
         {
             double currentTime = Raylib.GetTime();
@@ -160,14 +174,6 @@ while (!Raylib.WindowShouldClose())
             Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
         }
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
-    }
-
-    if (!hasStarted)
-    {
-        const string startText = "Press any key to continue";
-        int fontSize = 48;
-        int textSize = Raylib.MeasureText(startText, fontSize);
-        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
     }
 
     Raylib.EndDrawing();
