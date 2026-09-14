@@ -1,12 +1,12 @@
 ﻿using System.Numerics;
 using Raylib_cs;
 
-const int screenWidth = 960;
-const int screenHeight = 540;
+const int screenWidth = 1000;
+const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
-
+Color cyan = new Color(0, 255, 255, 255);
 // circle values
 float centerX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
 float centerY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
@@ -71,7 +71,6 @@ while (!Raylib.WindowShouldClose())
     Vector2 mousePoint = Raylib.GetMousePosition();
     bool boost = false;
     float dt = Raylib.GetFrameTime();
-    // double time = Raylib.GetTime();
     int currentScreenWidth = Raylib.GetScreenWidth();
     int currentScreenHeight = Raylib.GetScreenHeight();
     Raylib.BeginDrawing();
@@ -93,7 +92,10 @@ while (!Raylib.WindowShouldClose())
     {
         isPlaying = false;
         endTimer = 0;
-        Raylib.DrawText("Game Over!", currentScreenWidth / 2, currentScreenHeight / 2, 62, Color.Red);
+        const string gameOverText = "Game Over!";
+        int fontSize = 62;
+        int textSize = Raylib.MeasureText(gameOverText, fontSize);
+        Raylib.DrawText("Game Over!", currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Red);
     }
 
     if (isPlaying)
@@ -158,6 +160,14 @@ while (!Raylib.WindowShouldClose())
             Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
         }
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
+    }
+
+    if (!hasStarted)
+    {
+        const string startText = "Press any key to continue";
+        int fontSize = 48;
+        int textSize = Raylib.MeasureText(startText, fontSize);
+        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
     }
 
     Raylib.EndDrawing();
