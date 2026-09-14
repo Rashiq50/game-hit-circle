@@ -22,6 +22,8 @@ int sizeY = 40;
 int score = 0;
 const float boost_multiplier = 2.5f;
 const float speed = 100f;
+const int circleRetryAttemptCap = 10;
+int circleRetryAttempts = 0;
 
 
 bool hasHit(float centerX, float centerY)
@@ -72,13 +74,15 @@ while (!Raylib.WindowShouldClose())
         // draw new circle
         float newCenterX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
         float newCenterY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
-        while (hasHit(newCenterX, newCenterY))
+        while (hasHit(newCenterX, newCenterY) && circleRetryAttempts <= circleRetryAttemptCap)
         {
             newCenterX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
             newCenterY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
+            circleRetryAttempts++;
         }
         centerX = newCenterX;
         centerY = newCenterY;
+        circleRetryAttempts = 0;
     }
 
     // later work on showing proper hit feedback with proper timing etc. for now ignore
