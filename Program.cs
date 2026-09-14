@@ -48,12 +48,12 @@ void setNewCircle()
     centerY = newCenterY;
     circleRetryAttempts = 0;
 }
-// bool isHit = false;
 
 while (!Raylib.WindowShouldClose())
 {
     bool boost = false;
     float dt = Raylib.GetFrameTime();
+    double time = Raylib.GetTime();
     int currentScreenWidth = Raylib.GetScreenWidth();
     int currentScreenHeight = Raylib.GetScreenHeight();
     Raylib.BeginDrawing();
@@ -95,8 +95,6 @@ while (!Raylib.WindowShouldClose())
             float t = dyingElapsed / eraseTime;
             Raylib.DrawText("Hit !!", 20, currentScreenHeight - 10, 18, Color.Red);
             radius *= 1 - t;
-            centerX += 5 * dt;
-            // centerY -= 4;
             dyingElapsed += dt;
         }
         else
@@ -111,7 +109,8 @@ while (!Raylib.WindowShouldClose())
     Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
     Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
     Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
-    Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 24, Color.DarkGray);
+    Raylib.DrawText($"Time: {(int)time:D2}", 20, 40, 16, Color.White);
+    Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 14, Color.DarkGray);
     Raylib.EndDrawing();
 }
 
