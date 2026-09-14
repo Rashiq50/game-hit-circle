@@ -35,6 +35,17 @@ double endTimer = 0;
 const int playTime = 5;
 int bonusTime = 0;
 
+// score popup values
+bool popupActive = false;
+float popupX = 0;
+float popupY = 0;
+float popupElapsed = 0;
+const float popupScaleTime = 0.15f; // scale up duration
+const float popupHoldTime = 0.5f;   // time popup stays at full size before fading
+const float popupFadeTime = 0.3f;   // fade out duration
+const int popupFontSize = 24;
+const string popupText = "+10";
+
 
 bool hasHit(float centerX, float centerY)
 {
@@ -173,6 +184,10 @@ while (!Raylib.WindowShouldClose())
                 isDying = false;
                 dyingElapsed = 0;
                 radius = 25;
+                popupActive = true;
+                popupX = centerX;
+                popupY = centerY;
+                popupElapsed = 0;
                 setNewCircle();
                 endTimer = Raylib.GetTime() + playTime + bonusTime;
                 bonusTime = 0;
@@ -181,6 +196,43 @@ while (!Raylib.WindowShouldClose())
 
         Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
         Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
+
+        // Floating "+10" popup with animation
+        if (popupActive)
+        {
+            float scale;
+            float alpha;
+            if (popupElapsed < popupScaleTime)
+            {
+                scale = popupElapsed / popupScaleTime;
+                alpha = 1;
+            }
+            else if (popupElapsed < popupScaleTime + popupHoldTime)
+            {
+                scale = 1;
+                alpha = 1;
+            }
+            else if (popupElapsed < popupScaleTime + popupHoldTime + popupFadeTime)
+            {
+                scale = 1;
+                alpha = 1 - (popupElapsed - popupScaleTime - popupHoldTime) / popupFadeTime;
+            }
+            else
+            {
+                scale = 0;
+                alpha = 0;
+                popupActive = false;
+            }
+
+            if (popupActive)
+            {
+                int fontSize = Math.Max(1, (int)(popupFontSize * scale));
+                int textWidth = Raylib.MeasureText(popupText, fontSize);
+                float drift = popupElapsed * 20; // float upward slowly
+                Raylib.DrawText(popupText, (int)(popupX - textWidth / 2f), (int)(popupY - fontSize / 2f - drift), fontSize, Raylib.Fade(Color.Green, alpha));
+                popupElapsed += dt;
+            }
+        }
         Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
         Raylib.DrawText($" {score}", 90, 20, 18, Color.White);
         if (hasStarted && endTimer != 0)
