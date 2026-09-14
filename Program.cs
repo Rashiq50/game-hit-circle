@@ -31,14 +31,10 @@ float dyingElapsed = 0;
 
 bool hasHit(float centerX, float centerY)
 {
-    if (!isDying)
-    {
-        return topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius;
-    }
-    return false;
+    return topLeftY <= centerY + radius && topLeftY >= centerY - (radius + sizeY) && topLeftX >= centerX - (radius + sizeX) && topLeftX <= centerX + radius;
 }
 
-void drawNewCircle()
+void setNewCircle()
 {
     float newCenterX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
     float newCenterY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
@@ -52,7 +48,7 @@ void drawNewCircle()
     centerY = newCenterY;
     circleRetryAttempts = 0;
 }
-bool isHit = false;
+// bool isHit = false;
 
 while (!Raylib.WindowShouldClose())
 {
@@ -87,35 +83,33 @@ while (!Raylib.WindowShouldClose())
         topLeftY = currentScreenHeight - sizeY;
     }
 
-    if (hasHit(centerX, centerY))
+    if (hasHit(centerX, centerY) && !isDying)
     {
         score += 10;
-        isHit = true;
         isDying = true;
     }
-    float t = dyingElapsed / eraseTime;
-    if (isHit && dyingElapsed <= eraseTime)
+    if (isDying)
     {
-        Raylib.DrawText("Hit !!", 20, currentScreenHeight - 10, 18, Color.Red);
-        radius *= 1 - t;
-        centerX += 5;
-        // centerY -= 4;
-        dyingElapsed += dt;
-    }
-    else
-    {
-        isDying = false;
-        dyingElapsed = 0;
-        radius = 25;
+        if (dyingElapsed <= eraseTime)
+        {
+            float t = dyingElapsed / eraseTime;
+            Raylib.DrawText("Hit !!", 20, currentScreenHeight - 10, 18, Color.Red);
+            radius *= 1 - t;
+            centerX += 5 * dt;
+            // centerY -= 4;
+            dyingElapsed += dt;
+        }
+        else
+        {
+            isDying = false;
+            dyingElapsed = 0;
+            radius = 25;
+            setNewCircle();
+        }
     }
 
-    if (isHit && !isDying)
-    {
-        drawNewCircle();
-        isHit = false;
-    }
-    Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1 - t));
     Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
+    Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
     Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
     Raylib.DrawText($"FPS: {Raylib.GetFPS()}", currentScreenWidth - 100, 20, 24, Color.DarkGray);
     Raylib.EndDrawing();
