@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 using Raylib_cs;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
@@ -107,6 +108,44 @@ static class Assets
     }
 }
 
+/// <summary>Everything that survives between launches. Stage/Score are the checkpoint the next run starts from; HighScore is lifetime.</summary>
+record SaveData(int Stage = 1, int Score = 0, int HighScore = 0)
+{
+    public static readonly SaveData Fresh = new();
+    public bool HasProgress => Stage > 1 || Score > 0;
+}
+
+/// <summary>Reads and writes the save file as JSON; any unreadable or missing file counts as a fresh save.</summary>
+static class SaveFile
+{
+    static readonly string FilePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "HitThemAll", "savegame.json");
+
+    static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+
+    public static SaveData Load()
+    {
+        try
+        {
+            if (File.Exists(FilePath))
+                return JsonSerializer.Deserialize<SaveData>(File.ReadAllText(FilePath), Options) ?? SaveData.Fresh;
+        }
+        catch (Exception e) when (e is IOException or JsonException) { }
+        return SaveData.Fresh;
+    }
+
+    public static void Save(SaveData data)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(data, Options));
+        }
+        catch (IOException) { }
+    }
+}
+
 static class Screen
 {
     const int SpawnMargin = 50;
@@ -127,11 +166,8 @@ static class Screen
 
 class Game
 {
-    const int PlayTime = 5;
-    const int MaxBonusTime = 5;
     const int PointsPerHit = 10;
     private readonly int DAMAGE_BY_PROJECTILE = 12;
-
     const float ShakeDuration = 0.1f;
     const float ShakeStrength = 6f; // pixels
     float shakeTimeLeft;
@@ -142,18 +178,17 @@ class Game
         ? new Vector2(Random.Shared.NextSingle() * 2 - 1, Random.Shared.NextSingle() * 2 - 1) * ShakeStrength
         : Vector2.Zero;
 
-    static readonly string HighScorePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "HitThemAll", "highscore.txt");
-
     readonly Player player = new();
     readonly Demon demon = new();
     readonly ScorePopup popup = new();
     readonly EnemyProjectile projectile = new();
 
     GameState state = GameState.Welcome;
-    int score;
-    int highScore = LoadHighScore();
+    // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
+    SaveData checkpoint = SaveFile.Load();
+    int stage;
+    int score; // live score for this stage attempt; rolls back to the checkpoint on quit or game over
+    int highScore;
     int bonusTime;
     // double endTime;
     double pauseStart;
@@ -223,10 +258,13 @@ class Game
         }
     }
 
+    // Restarts the checkpointed stage from scratch: in-stage progress is never saved.
     void StartRound()
     {
         state = GameState.Playing;
-        score = 0;
+        stage = checkpoint.Stage;
+        score = checkpoint.Score;
+        highScore = checkpoint.HighScore;
         bonusTime = 0;
         player.Reset();
         demon.Respawn(player);
@@ -248,11 +286,14 @@ class Game
     void EndRound()
     {
         state = GameState.GameOver;
-        if (score > highScore)
-        {
-            highScore = score;
-            SaveHighScore(highScore);
-        }
+        highScore = Math.Max(highScore, score);
+        SaveProgress();
+    }
+
+    void SaveProgress()
+    {
+        checkpoint = checkpoint with { HighScore = highScore };
+        SaveFile.Save(checkpoint);
     }
 
     void UpdatePlaying(float dt)
@@ -382,26 +423,6 @@ class Game
         Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
     }
 
-    static int LoadHighScore()
-    {
-        try
-        {
-            if (File.Exists(HighScorePath) && int.TryParse(File.ReadAllText(HighScorePath), out int saved))
-                return saved;
-        }
-        catch (IOException) { }
-        return 0;
-    }
-
-    static void SaveHighScore(int value)
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(HighScorePath)!);
-            File.WriteAllText(HighScorePath, value.ToString());
-        }
-        catch (IOException) { }
-    }
 }
 
 class Player
