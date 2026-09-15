@@ -1,114 +1,131 @@
-﻿using System.Numerics;
+using System.Numerics;
 using Raylib_cs;
 
-const int screenWidth = 1000;
-const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
-Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
+Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.SetTargetFPS(60);
-Texture2D background = Raylib.LoadTexture("tile.png");
 
+Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
 var game = new Game();
 
 while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 {
-    float dt = Raylib.GetFrameTime();
-    game.Update(dt);
+    game.Update(Raylib.GetFrameTime());
+
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
-    Raylib.DrawTexturePro(background,
-    new Rectangle(0, 0, background.Width, background.Height),
-    new Rectangle(0, 0, Screen.Width, Screen.Height),
-    Vector2.Zero, 0, Color.White);
-    game.Draw(dt);
+    game.Draw();
     Raylib.EndDrawing();
 }
 
-
-Raylib.UnloadTexture(background);
-Raylib.UnloadTexture(Demon.idleSheet);
-Raylib.UnloadTexture(Demon.deathSheet);
-foreach (var t in Player.heroIdle.Concat(Player.heroWalk).Concat(Player.heroRun).Concat(Player.heroAxe)) Raylib.UnloadTexture(t);
+Assets.Unload();
 Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
-enum GameState { Playing, GameOver, Welcome }
-enum PlayerState { Idle, Attacking, Running, Walking }
+enum GameState { Welcome, Playing, GameOver }
+enum PlayerState { Idle, Walking, Running, Attacking }
 enum DemonState { Idle, Dying }
+
+/// <summary>A horizontal sprite sheet of square frames, plus the frame arithmetic every animation needs.</summary>
+readonly record struct SpriteStrip(Texture2D Texture, int FrameSize)
+{
+    public int FrameCount => Texture.Width / FrameSize;
+
+    /// <summary>Frame for a looping animation after <paramref name="elapsed"/> seconds.</summary>
+    public int LoopFrame(float elapsed, float fps) => (int)(elapsed * fps) % FrameCount;
+
+    /// <summary>Frame for a play-once animation spread over <paramref name="duration"/> seconds; holds the last frame afterwards.</summary>
+    public int OneShotFrame(float elapsed, float duration) =>
+        Math.Min((int)(elapsed / duration * FrameCount), FrameCount - 1);
+
+    public void Draw(int frame, Vector2 center, float drawSize) =>
+        Raylib.DrawTexturePro(Texture,
+            new Rectangle(frame * FrameSize, 0, FrameSize, FrameSize),
+            new Rectangle(center.X - drawSize / 2, center.Y - drawSize / 2, drawSize, drawSize),
+            Vector2.Zero, 0, Color.White);
+}
+
+/// <summary>Owns every texture: loaded once after the window exists, unloaded once before it closes.</summary>
+static class Assets
+{
+    const int HeroFrameSize = 80;
+    const int DemonFrameSize = 256;
+
+    public static Texture2D Background;
+    public static SpriteStrip DemonIdle, DemonDeath;
+    // one strip per facing direction, indexed by (int)Direction
+    public static SpriteStrip[] HeroIdle = [], HeroWalk = [], HeroRun = [], HeroAxe = [];
+
+    public static void Load()
+    {
+        Background = Raylib.LoadTexture("tile.png");
+        DemonIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), DemonFrameSize);
+        DemonDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), DemonFrameSize);
+        HeroIdle = LoadHeroStrips("idle/idle");
+        HeroWalk = LoadHeroStrips("walk/walk");
+        HeroRun = LoadHeroStrips("run/run");
+        HeroAxe = LoadHeroStrips("axe attack/axe_attack");
+    }
+
+    public static void Unload()
+    {
+        Raylib.UnloadTexture(Background);
+        Raylib.UnloadTexture(DemonIdle.Texture);
+        Raylib.UnloadTexture(DemonDeath.Texture);
+        foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
+            Raylib.UnloadTexture(strip.Texture);
+    }
+
+    static SpriteStrip[] LoadHeroStrips(string basePath)
+    {
+        string[] suffixes = ["down", "up", "left", "right"]; // same order as the Direction enum
+        return suffixes
+            .Select(d => new SpriteStrip(Raylib.LoadTexture($"textures/hero/{basePath}_{d}.png"), HeroFrameSize))
+            .ToArray();
+    }
+}
+
+static class Screen
+{
+    const int SpawnMargin = 50;
+
+    public static int Width => Raylib.GetScreenWidth();
+    public static int Height => Raylib.GetScreenHeight();
+
+    public static Vector2 RandomPoint() => new(
+        Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
+        Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+
+    public static void DrawCenteredText(string text, int y, int fontSize, Color color)
+    {
+        int width = Raylib.MeasureText(text, fontSize);
+        Raylib.DrawText(text, Width / 2 - width / 2, y, fontSize, color);
+    }
+}
+
 class Game
 {
     const int PlayTime = 5;
+    const int MaxBonusTime = 5;
     const int PointsPerHit = 10;
-    int score;
-    double endTime;
-    int bonusTime;
-    static string highScorePath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "HitThemAll", "highscore.txt");
-    int highScore = loadHighScore();
 
-    static int loadHighScore()
-    {
-        try
-        {
-            if (File.Exists(highScorePath) && int.TryParse(File.ReadAllText(highScorePath), out int saved))
-                return saved;
-        }
-        catch (IOException) { }
-        return 0;
-    }
-    GameState state = GameState.Welcome;
-    public bool QuitRequested { get; private set; }
+    static readonly string HighScorePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "HitThemAll", "highscore.txt");
 
     readonly Player player = new();
     readonly Demon demon = new();
     readonly ScorePopup popup = new();
 
-    static bool AnyInputPressed() =>
-    Raylib.GetKeyPressed() != 0
-    || Raylib.IsMouseButtonPressed(MouseButton.Left)
-    || Raylib.IsMouseButtonPressed(MouseButton.Right)
-    || Raylib.IsMouseButtonPressed(MouseButton.Middle);
-    void StartRound()
-    {
-        state = GameState.Playing;
-        score = 0;
-        bonusTime = 0;
-        endTime = Raylib.GetTime() + PlayTime;
-        player.Reset();
-        demon.Respawn(player);
-    }
+    GameState state = GameState.Welcome;
+    int score;
+    int highScore = LoadHighScore();
+    int bonusTime;
+    double endTime;
 
-    void OnHit()
-    {
-        player.playerState = PlayerState.Attacking;
-        score += PointsPerHit;
-        int rewardTime = (int)endTime - (int)Raylib.GetTime();
-        bonusTime = rewardTime <= 5 ? rewardTime : 5;
-        demon.demonState = DemonState.Dying;
-    }
+    public bool QuitRequested { get; private set; }
 
-    void UpdatePlaying(float dt)
-    {
-        if (Raylib.GetTime() > endTime)
-        {
-            state = GameState.GameOver;
-            return;
-        }
-        player.Update(dt);
-        popup.Update(dt);
-
-        bool clickedTarget = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
-        if (!demon.demonState.Equals(DemonState.Dying) && (clickedTarget || demon.Overlaps(player))) OnHit();
-
-        if (demon.IsFullyDead(dt))
-        {
-            popup.Show(demon.Center);
-            demon.Respawn(player);
-            endTime = Raylib.GetTime() + PlayTime + bonusTime;
-            bonusTime = 0;
-        }
-    }
+    int SecondsLeft => (int)(endTime - Raylib.GetTime());
 
     public void Update(float dt)
     {
@@ -129,8 +146,9 @@ class Game
         }
     }
 
-    public void Draw(float dt)
+    public void Draw()
     {
+        DrawBackground();
         switch (state)
         {
             case GameState.Welcome:
@@ -138,8 +156,8 @@ class Game
                 break;
 
             case GameState.Playing:
-                player.Draw(dt);
-                demon.Draw(dt);
+                player.Draw();
+                demon.Draw();
                 popup.Draw();
                 DrawHud();
                 break;
@@ -150,212 +168,241 @@ class Game
         }
     }
 
+    void StartRound()
+    {
+        state = GameState.Playing;
+        score = 0;
+        bonusTime = 0;
+        endTime = Raylib.GetTime() + PlayTime;
+        player.Reset();
+        demon.Respawn(player);
+    }
+
+    void EndRound()
+    {
+        state = GameState.GameOver;
+        if (score > highScore)
+        {
+            highScore = score;
+            SaveHighScore(highScore);
+        }
+    }
+
+    void UpdatePlaying(float dt)
+    {
+        if (SecondsLeft < 0)
+        {
+            EndRound();
+            return;
+        }
+
+        player.Update(dt);
+        popup.Update(dt);
+
+        bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
+        if (demon.IsAlive && (clickedDemon || demon.Overlaps(player))) OnHit();
+
+        demon.Update(dt);
+        if (demon.IsDead)
+        {
+            popup.Show(demon.Center);
+            demon.Respawn(player);
+            endTime = Raylib.GetTime() + PlayTime + bonusTime;
+            bonusTime = 0;
+        }
+    }
+
+    void OnHit()
+    {
+        score += PointsPerHit;
+        bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
+        player.Attack();
+        demon.Kill();
+    }
+
+    static bool AnyInputPressed() =>
+        Raylib.GetKeyPressed() != 0
+        || Raylib.IsMouseButtonPressed(MouseButton.Left)
+        || Raylib.IsMouseButtonPressed(MouseButton.Right)
+        || Raylib.IsMouseButtonPressed(MouseButton.Middle);
+
+    static void DrawBackground()
+    {
+        var bg = Assets.Background;
+        Raylib.DrawTexturePro(bg,
+            new Rectangle(0, 0, bg.Width, bg.Height),
+            new Rectangle(0, 0, Screen.Width, Screen.Height),
+            Vector2.Zero, 0, Color.White);
+    }
+
     static void DrawWelcome()
     {
-        const string titleText = "Hit them all!";
-        int titleFontSize = 80;
-        int titleSize = Raylib.MeasureText(titleText, titleFontSize);
-        Raylib.DrawText(titleText, Screen.Width / 2 - titleSize / 2, Screen.Height / 2 - titleFontSize - 20, titleFontSize, Color.Beige);
-
-        const string startText = "Press any key to continue";
-        int fontSize = 32;
-        int textSize = Raylib.MeasureText(startText, fontSize);
-        Raylib.DrawText(startText, Screen.Width / 2 - textSize / 2, Screen.Height / 2 + 20, fontSize, Color.Gray);
+        const int titleFontSize = 80;
+        Screen.DrawCenteredText("Hit them all!", Screen.Height / 2 - titleFontSize - 20, titleFontSize, Color.Beige);
+        Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 + 20, 32, Color.Gray);
     }
 
     static void DrawGameOver()
     {
-        const string gameOverText = "Game Over!";
-        int fontSize = 62;
-        int textSize = Raylib.MeasureText(gameOverText, fontSize);
-        Raylib.DrawText("Game Over!", Screen.Width / 2 - textSize / 2, Screen.Height / 2 - fontSize / 2, fontSize, Color.Red);
+        const int titleFontSize = 62;
+        const int optionFontSize = 28;
+        int optionY = Screen.Height / 2 + titleFontSize / 2 + 20;
 
-        const string replayText = "[R] Replay";
-        const string quitText = "[Q] Quit";
-        int optionFontSize = 28;
-        int optionY = Screen.Height / 2 + fontSize / 2 + 20;
-        int replaySize = Raylib.MeasureText(replayText, optionFontSize);
-        int quitSize = Raylib.MeasureText(quitText, optionFontSize);
-        Raylib.DrawText(replayText, Screen.Width / 2 - replaySize / 2, optionY, optionFontSize, Color.Gray);
-        Raylib.DrawText(quitText, Screen.Width / 2 - quitSize / 2, optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+        Screen.DrawCenteredText("Game Over!", Screen.Height / 2 - titleFontSize / 2, titleFontSize, Color.Red);
+        Screen.DrawCenteredText("[R] Replay", optionY, optionFontSize, Color.Gray);
+        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
 
     void DrawHud()
     {
         Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
         Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
-        if (state.Equals(GameState.Playing) && endTime != 0)
-        {
-            double currentTime = Raylib.GetTime();
-            double diff = endTime - currentTime;
-            Raylib.DrawText($"Time: {(int)diff:D2}", 20, 40, 16, Color.White);
-        }
+        Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
     }
-}
 
-class Screen
-{
-    public static int Width => Raylib.GetScreenWidth();
-    public static int Height => Raylib.GetScreenHeight();
-    const int SpawnMargin = 50;
+    static int LoadHighScore()
+    {
+        try
+        {
+            if (File.Exists(HighScorePath) && int.TryParse(File.ReadAllText(HighScorePath), out int saved))
+                return saved;
+        }
+        catch (IOException) { }
+        return 0;
+    }
 
-    public static Vector2 RandomPoint() => new(
-    Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
-    Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+    static void SaveHighScore(int value)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(HighScorePath)!);
+            File.WriteAllText(HighScorePath, value.ToString());
+        }
+        catch (IOException) { }
+    }
 }
 
 class Player
 {
-    public const int Size = 40;
+    const int Size = 40;
     const float Speed = 100f;
     const float BoostMultiplier = 2.5f;
+    const float DrawSize = 96f;
+    const float AnimFps = 10f;
 
+    Vector2 position = Screen.RandomPoint();
+    PlayerState state = PlayerState.Idle;
+    Direction facing = Direction.Down;
+    float animElapsed;
 
-    int heroFrame;
-    // bool isAttacking = isDying && hasHit(centerX, centerY);
-    // bool isAttacking = false;
+    public Rectangle Bounds => new(position.X, position.Y, Size, Size);
+    Vector2 Center => position + new Vector2(Size / 2f);
 
-    public PlayerState playerState = PlayerState.Idle;
-
-    public Vector2 Position = Screen.RandomPoint();
-    // hero sprite strips: 80x80 frames, one strip per facing direction (index = Direction)
-    const int heroFrameSize = 80;
-    const float heroDrawSize = 96f;
-    const float heroAnimFps = 10f;
-    public static Texture2D[] heroIdle = LoadHeroStrips("idle/idle");
-    public static Texture2D[] heroWalk = LoadHeroStrips("walk/walk");
-    public static Texture2D[] heroRun = LoadHeroStrips("run/run");
-    public static Texture2D[] heroAxe = LoadHeroStrips("axe attack/axe_attack");
-    public Direction heroFacing = Direction.Down;
-    float heroAnimElapsed = 0;
-
-    static Texture2D[] LoadHeroStrips(string basePath)
+    SpriteStrip Strip => (state switch
     {
-        string[] suffixes = { "down", "up", "left", "right" };
-        return suffixes.Select(d => Raylib.LoadTexture($"textures/hero/{basePath}_{d}.png")).ToArray();
+        PlayerState.Attacking => Assets.HeroAxe,
+        PlayerState.Running => Assets.HeroRun,
+        PlayerState.Walking => Assets.HeroWalk,
+        _ => Assets.HeroIdle,
+    })[(int)facing];
+
+    float AttackDuration => Strip.FrameCount / AnimFps;
+
+    public void Reset()
+    {
+        position = Screen.RandomPoint();
+        state = PlayerState.Idle;
+        animElapsed = 0;
     }
 
-    public void Reset() => Position = Screen.RandomPoint();
+    public void Attack()
+    {
+        state = PlayerState.Attacking;
+        animElapsed = 0;
+    }
 
     public void Update(float dt)
     {
-        float speed = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? Speed * BoostMultiplier : Speed;
-        float step = speed * dt;
+        animElapsed += dt;
+        if (state == PlayerState.Attacking && animElapsed >= AttackDuration)
+            state = PlayerState.Idle;
 
-        if (Raylib.IsKeyDown(KeyboardKey.D)) { Position.X += step; heroFacing = Direction.Right; playerState = PlayerState.Walking; }
-        if (Raylib.IsKeyDown(KeyboardKey.A)) { Position.X -= step; heroFacing = Direction.Left; playerState = PlayerState.Walking; }
-        if (Raylib.IsKeyDown(KeyboardKey.W)) { Position.Y -= step; heroFacing = Direction.Up; playerState = PlayerState.Walking; }
-        if (Raylib.IsKeyDown(KeyboardKey.S)) { Position.Y += step; heroFacing = Direction.Down; playerState = PlayerState.Walking; }
+        bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
+        float step = (boosting ? Speed * BoostMultiplier : Speed) * dt;
 
-        Position.X = Math.Clamp(Position.X, 0, Screen.Width - Size);
-        Position.Y = Math.Clamp(Position.Y, 0, Screen.Height - Size);
+        Vector2 move = Vector2.Zero;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) { move.X += step; facing = Direction.Right; }
+        if (Raylib.IsKeyDown(KeyboardKey.A)) { move.X -= step; facing = Direction.Left; }
+        if (Raylib.IsKeyDown(KeyboardKey.W)) { move.Y -= step; facing = Direction.Up; }
+        if (Raylib.IsKeyDown(KeyboardKey.S)) { move.Y += step; facing = Direction.Down; }
+
+        if (move != Vector2.Zero)
+            state = boosting ? PlayerState.Running : PlayerState.Walking;
+        else if (state != PlayerState.Attacking)
+            state = PlayerState.Idle;
+
+        position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(Screen.Width - Size, Screen.Height - Size));
     }
 
-    public void Draw(float dt)
+    public void Draw()
     {
-        Texture2D heroSheet;
-        if (playerState.Equals(PlayerState.Attacking))
-        {
-            heroSheet = heroAxe[(int)heroFacing];
-            int attackFrames = heroSheet.Width / heroFrameSize;
-            heroFrame = Math.Min((int)(attackFrames), attackFrames - 1);
-        }
-        else
-        {
-            heroSheet = (playerState.Equals(PlayerState.Walking) && Raylib.IsKeyDown(KeyboardKey.LeftShift) ? heroRun
-                       : playerState.Equals(PlayerState.Walking) ? heroWalk
-                       : heroIdle)[(int)heroFacing];
-            heroAnimElapsed += dt;
-            heroFrame = (int)(heroAnimElapsed * heroAnimFps) % (heroSheet.Width / heroFrameSize);
-        }
-        Raylib.DrawTexturePro(heroSheet,
-            new Rectangle(heroFrame * heroFrameSize, 0, heroFrameSize, heroFrameSize),
-            new Rectangle(Position.X + Size / 2f - heroDrawSize / 2, Position.Y + Size / 2f - heroDrawSize / 2, heroDrawSize, heroDrawSize),
-            Vector2.Zero, 0, Color.White);
+        var strip = Strip;
+        int frame = state == PlayerState.Attacking
+            ? strip.OneShotFrame(animElapsed, AttackDuration)
+            : strip.LoopFrame(animElapsed, AnimFps);
+        strip.Draw(frame, Center, DrawSize);
     }
 }
 
 class Demon
 {
-    // enemy sprite sheets: horizontal strips of 256x256 frames
-    public static Texture2D idleSheet = Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png");
-    public static Texture2D deathSheet = Raylib.LoadTexture("textures/Enemy-Melee-Death.png");
-    const int frameSize = 256;
-    readonly int idleFrameCount = idleSheet.Width / frameSize;
-    readonly int deathFrameCount = deathSheet.Width / frameSize;
-    const float idleFps = 12f;
-    const float spriteDrawSize = 110f; // on-screen size of one frame
-    float idleElapsed = 0;
-    readonly static int RespawnAttemptCap = 10;
-    public DemonState demonState = DemonState.Idle;
+    const float Radius = 25f;
+    const float DrawSize = 110f;
+    const float IdleFps = 12f;
+    const float DeathDuration = 0.6f;
+    const int RespawnAttemptCap = 10;
+
     public Vector2 Center;
-    public float Radius = 25;
-    readonly float eraseTime = 0.6f; // death animation duration
-    float dyingElapsed = 0;
-    public bool ContainsPoint(Vector2 p) =>
-    p.X >= Center.X - Radius && p.X <= Center.X + Radius &&
-    p.Y >= Center.Y - Radius && p.Y <= Center.Y + Radius;
+    DemonState state = DemonState.Idle;
+    float animElapsed;
 
-    public bool Overlaps(Player player) => Overlaps(Center, player);
+    public bool IsAlive => state == DemonState.Idle;
+    public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
+    Rectangle Bounds => BoundsAt(Center);
 
-    bool Overlaps(Vector2 center, Player player) =>
-        player.Position.X <= center.X + Radius && player.Position.X + Player.Size >= center.X - Radius &&
-        player.Position.Y <= center.Y + Radius && player.Position.Y + Player.Size >= center.Y - Radius;
+    static Rectangle BoundsAt(Vector2 center) =>
+        new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
+
+    public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
+    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
+
+    public void Kill()
+    {
+        state = DemonState.Dying;
+        animElapsed = 0;
+    }
 
     public void Respawn(Player player)
     {
         Vector2 candidate = Screen.RandomPoint();
-        for (int attempt = 0; attempt <= RespawnAttemptCap && Overlaps(candidate, player); attempt++)
+        for (int attempt = 0; attempt < RespawnAttemptCap && Raylib.CheckCollisionRecs(BoundsAt(candidate), player.Bounds); attempt++)
             candidate = Screen.RandomPoint();
 
         Center = candidate;
-        dyingElapsed = 0;
-        demonState = DemonState.Idle;
+        state = DemonState.Idle;
+        animElapsed = 0;
     }
 
-    public void Draw(float dt)
-    {
-        Texture2D sheet;
-        int frame;
-        if (demonState.Equals(DemonState.Dying))
-        {
-            sheet = deathSheet;
-            frame = Math.Min((int)(dyingElapsed / eraseTime * deathFrameCount), deathFrameCount - 1);
-        }
-        else
-        {
-            sheet = idleSheet;
-            idleElapsed += dt;
-            frame = (int)(idleElapsed * idleFps) % idleFrameCount;
-        }
-        Raylib.DrawTexturePro(sheet,
-            new Rectangle(frame * frameSize, 0, frameSize, frameSize),
-            new Rectangle(Center.X - spriteDrawSize / 2, Center.Y - spriteDrawSize / 2, spriteDrawSize, spriteDrawSize),
-            Vector2.Zero, 0, Color.White);
-    }
+    public void Update(float dt) => animElapsed += dt;
 
-    public bool IsFullyDead(float dt)
+    public void Draw()
     {
-        if (demonState.Equals(DemonState.Dying))
-        {
-            if (dyingElapsed <= eraseTime)
-            {
-                dyingElapsed += dt;
-            }
-            else
-            {
-                return true;
-                // popupActive = true;
-                // popupX = centerX;
-                // popupY = centerY;
-                // popupElapsed = 0;
-                // Respawn();
-                // endTimer = Raylib.GetTime() + playTime + bonusTime;
-                // bonusTime = 0;
-            }
-        }
-        return false;
+        var strip = state == DemonState.Dying ? Assets.DemonDeath : Assets.DemonIdle;
+        int frame = state == DemonState.Dying
+            ? strip.OneShotFrame(animElapsed, DeathDuration)
+            : strip.LoopFrame(animElapsed, IdleFps);
+        strip.Draw(frame, Center, DrawSize);
     }
 }
 
@@ -364,6 +411,7 @@ class ScorePopup
     const float ScaleTime = 0.15f;
     const float HoldTime = 0.5f;
     const float FadeTime = 0.3f;
+    const float Duration = ScaleTime + HoldTime + FadeTime;
     const float DriftSpeed = 20f; // pixels per second
     const int FontSize = 24;
     const string Text = "+10";
@@ -383,7 +431,7 @@ class ScorePopup
     {
         if (!active) return;
         elapsed += dt;
-        if (elapsed >= ScaleTime + HoldTime + FadeTime) active = false;
+        if (elapsed >= Duration) active = false;
     }
 
     public void Draw()
