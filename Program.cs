@@ -6,14 +6,6 @@ Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.InitAudioDevice();
 
-var camera = new Camera2D
-{
-    Target = new Vector2(Screen.Width / 2f, Screen.Height / 2f),
-    Offset = new Vector2(Screen.Width / 2f, Screen.Height / 2f),
-    Rotation = 0f,
-    Zoom = 1f,
-};
-
 Raylib.SetTargetFPS(60);
 Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 
@@ -25,8 +17,8 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
     game.Update(Raylib.GetFrameTime());
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
-    camera.Target = new Vector2(Screen.Width / 2f, Screen.Height / 2f) + game.ShakeOffset;
-    Raylib.BeginMode2D(camera);
+    World.FitCamera(game.ShakeOffset); // every frame: the window may have been resized
+    Raylib.BeginMode2D(World.Camera);
     game.DrawWorld();
     Raylib.EndMode2D();
     game.DrawUi(); // HUD and menus stay in screen space, unaffected by camera pan/zoom
@@ -115,6 +107,26 @@ record SaveData(int Stage = 1, int Score = 0, int HighScore = 0)
     public bool HasProgress => Stage > 1 || Score > 0;
 }
 
+/// <summary>What a stage throws at the player. Add fields here (demon types, layout, ...) rather than special-casing in Game.</summary>
+record StageDef(int DemonCount, string DemonType);
+
+/// <summary>The stage list; stage numbers are 1-based to match what the player sees.</summary>
+static class Stages
+{
+    // Placeholder curve for testing: 3 demons on stage 1 ramping to 20 on stage 10.
+    static readonly StageDef[] All =
+    [
+        new(3, "melee"), new(4, "melee"), new(6, "melee"), new(8, "melee"), new(10, "melee"),
+        new(12, "melee"), new(14, "melee"), new(16, "melee"), new(18, "melee"), new(20, "melee"),
+    ];
+
+    public static int Count => All.Length;
+    public static bool IsLast(int stage) => stage >= Count;
+
+    /// <summary>Stages past the end reuse the last one, so a stale save can never index out of range.</summary>
+    public static StageDef Get(int stage) => All[Math.Clamp(stage, 1, Count) - 1];
+}
+
 /// <summary>Reads and writes the save file as JSON; any unreadable or missing file counts as a fresh save.</summary>
 static class SaveFile
 {
@@ -146,16 +158,40 @@ static class SaveFile
     }
 }
 
-static class Screen
+/// <summary>
+/// The play area in fixed virtual units. Gameplay code positions everything in this space and never looks at the
+/// window size; the camera scales the world to fit the window (letterboxed) so coordinates in stage data stay valid.
+/// </summary>
+static class World
 {
+    public const int Width = 1000;
+    public const int Height = 600;
     const int SpawnMargin = 50;
 
-    public static int Width => Raylib.GetScreenWidth();
-    public static int Height => Raylib.GetScreenHeight();
+    public static readonly Vector2 Center = new(Width / 2f, Height / 2f);
+    public static Camera2D Camera = new() { Target = Center, Zoom = 1f };
+
+    /// <summary>Largest uniform zoom that keeps the whole world visible, centred in the window.</summary>
+    public static void FitCamera(Vector2 shake)
+    {
+        Camera.Zoom = Math.Min(Screen.Width / (float)Width, Screen.Height / (float)Height);
+        Camera.Offset = new Vector2(Screen.Width / 2f, Screen.Height / 2f);
+        Camera.Target = Center + shake;
+    }
+
+    /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
+    public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);
 
     public static Vector2 RandomPoint() => new(
         Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
         Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+}
+
+/// <summary>The actual window, in pixels. Only UI (HUD, menus) should position by this.</summary>
+static class Screen
+{
+    public static int Width => Raylib.GetScreenWidth();
+    public static int Height => Raylib.GetScreenHeight();
 
     public static void DrawCenteredText(string text, int y, int fontSize, Color color)
     {
@@ -309,7 +345,7 @@ class Game
         popup.Update(dt);
         projectile.Update(dt);
 
-        bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
+        bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
         if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
         if (demon.IsAlive && player.SwingLanded) demon.Kill();
 
@@ -364,7 +400,7 @@ class Game
         var bg = Assets.Background;
         Raylib.DrawTexturePro(bg,
             new Rectangle(0, 0, bg.Width, bg.Height),
-            new Rectangle(0, 0, Screen.Width, Screen.Height),
+            new Rectangle(0, 0, World.Width, World.Height),
             Vector2.Zero, 0, Color.White);
     }
 
@@ -438,7 +474,7 @@ class Player
     public float PlayerCurrentHp = PlayerHealth;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
 
-    Vector2 position = Screen.RandomPoint();
+    Vector2 position = World.RandomPoint();
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
@@ -468,7 +504,7 @@ class Player
 
     public void Reset()
     {
-        position = Screen.RandomPoint();
+        position = World.RandomPoint();
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
@@ -515,7 +551,7 @@ class Player
               : boosting ? PlayerState.Running
               : PlayerState.Walking;
 
-        position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(Screen.Width - Size, Screen.Height - Size));
+        position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
     }
 
     // The swing plays to completion; movement input is ignored until it finishes.
@@ -560,9 +596,9 @@ class Demon
 
     public void Respawn(Player player)
     {
-        Vector2 candidate = Screen.RandomPoint();
+        Vector2 candidate = World.RandomPoint();
         for (int attempt = 0; attempt < RespawnAttemptCap && Raylib.CheckCollisionRecs(BoundsAt(candidate), player.Bounds); attempt++)
-            candidate = Screen.RandomPoint();
+            candidate = World.RandomPoint();
 
         Center = candidate;
         state = DemonState.Idle;
@@ -659,8 +695,8 @@ class EnemyProjectile
 
         position += direction * Speed * dt;
 
-        bool offScreen = position.X < -Radius || position.X > Screen.Width + Radius
-                      || position.Y < -Radius || position.Y > Screen.Height + Radius;
+        bool offScreen = position.X < -Radius || position.X > World.Width + Radius
+                      || position.Y < -Radius || position.Y > World.Height + Radius;
         if (offScreen) active = false;
     }
 }
