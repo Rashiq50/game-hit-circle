@@ -59,7 +59,7 @@ static class Assets
     const int HeroFrameSize = 80;
     const int DemonFrameSize = 256;
 
-    public static Texture2D Background;
+    public static Texture2D Background, Fireball;
     public static SpriteStrip DemonIdle, DemonDeath;
     public static Sound SwordSound, ScoreSound, GameOver;
 
@@ -70,6 +70,7 @@ static class Assets
     public static void Load()
     {
         Background = Raylib.LoadTexture("tile.png");
+        Fireball = Raylib.LoadTexture("textures/fireball.png");
         DemonIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), DemonFrameSize);
         DemonDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), DemonFrameSize);
         HeroIdle = LoadHeroStrips("idle/idle");
@@ -83,6 +84,7 @@ static class Assets
     public static void Unload()
     {
         Raylib.UnloadTexture(Background);
+        Raylib.UnloadTexture(Fireball);
         Raylib.UnloadTexture(DemonIdle.Texture);
         Raylib.UnloadTexture(DemonDeath.Texture);
         foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
@@ -365,7 +367,6 @@ class Game
 
     }
 
-    // Score is banked when the swing starts; the demon dies when the swing lands (see UpdatePlaying).
     void StartSwing()
     {
         score += PointsPerHit;
@@ -460,7 +461,7 @@ class Player
     const float DrawSize = 96f;
     const float AnimFps = 10f;
     const float AttackFps = 16f;
-    const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
+    const int AttackImpactFrame = 3;
     static float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
@@ -532,7 +533,6 @@ class Player
         position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
     }
 
-    // The swing plays to completion; movement input is ignored until it finishes.
     void UpdateAttack(float dt)
     {
         int frameBefore = CurrentFrame;
@@ -679,6 +679,7 @@ class EnemyProjectile(Vector2 from, Vector2 toward)
 {
     const float Speed = 400f;
     const float Radius = 15f;
+    const float DrawSize = 34f; // the glow extends past the hit box
 
     Vector2 position = from;
     readonly Vector2 direction = Vector2.Normalize(toward - from);
@@ -690,7 +691,12 @@ class EnemyProjectile(Vector2 from, Vector2 toward)
 
     public void Draw()
     {
-        if (Active) Raylib.DrawCircleV(position, Radius, Color.Gold);
+        if (!Active) return;
+        var tex = Assets.Fireball;
+        Raylib.DrawTexturePro(tex,
+            new Rectangle(0, 0, tex.Width, tex.Height),
+            new Rectangle(position.X - DrawSize / 2, position.Y - DrawSize / 2, DrawSize, DrawSize),
+            Vector2.Zero, 0, Color.White);
     }
 
     public void Update(float dt)

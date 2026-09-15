@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="26" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="30">
+ <tileset firstgid="1" source="test.tsx"/>
+ <imagelayer id="3" name="Image Layer 1">
+  <image source="../../Downloads/tile.png" width="962" height="833"/>
+ </imagelayer>
+ <objectgroup id="4" name="Object Layer 1">
+  <object id="18" x="-1.77636e-15" y="1.33333" width="965.333" height="256"/>
+  <object id="19" x="832" y="388" width="130.667" height="260"/>
+  <object id="20" x="388" y="251.333" width="56" height="384.667"/>
+  <object id="21" x="253.333" y="389.333" width="132" height="246.667"/>
+  <object id="24" x="566" y="587.333" width="76" height="243.333"/>
+  <object id="25" x="4" y="384" width="120" height="247"/>
+  <object id="27" x="253.333" y="635" width="63.6667" height="66.6667"/>
+  <object id="28" x="59.3333" y="631.333" width="62.6667" height="72"/>
+ </objectgroup>
+</map>
