@@ -350,6 +350,7 @@ class Player
     const float BoostMultiplier = 2.5f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
+    const float AttackFps = 16f;
     const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
 
     Vector2 position = Screen.RandomPoint();
@@ -372,7 +373,7 @@ class Player
         _ => Assets.HeroIdle,
     })[(int)facing];
 
-    float AttackDuration => Strip.FrameCount / AnimFps;
+    float AttackDuration => Strip.FrameCount / AttackFps;
 
     int CurrentFrame => IsAttacking
         ? Strip.OneShotFrame(animElapsed, AttackDuration)
@@ -434,7 +435,7 @@ class Demon
     const float Radius = 25f;
     const float DrawSize = 110f;
     const float IdleFps = 12f;
-    const float DeathDuration = 0.6f;
+    const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
 
     public Vector2 Center;
