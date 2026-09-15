@@ -118,6 +118,7 @@ class Game
     const int PlayTime = 5;
     const int MaxBonusTime = 5;
     const int PointsPerHit = 10;
+    private readonly int DAMAGE_BY_PROJECTILE = 12;
 
     static readonly string HighScorePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -225,7 +226,7 @@ class Game
 
     void UpdatePlaying(float dt)
     {
-        if (SecondsLeft < 0)
+        if (SecondsLeft < 0 || player.PlayerCurrentHp <= 0)
         {
             EndRound();
             return;
@@ -242,6 +243,11 @@ class Game
         if (projectile.Overlaps(player))
         {
             Console.Write("Hit !!!");
+            PlayerHitByPt();
+        }
+        else
+        {
+            player.DamageGone();
         }
 
         demon.Update(dt);
@@ -266,6 +272,11 @@ class Game
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
         player.Attack();
+    }
+
+    void PlayerHitByPt()
+    {
+        player.ReceiveDamage(DAMAGE_BY_PROJECTILE);
     }
 
     static bool AnyInputPressed() =>
@@ -363,14 +374,14 @@ class Player
     const float AnimFps = 10f;
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
-    int PlayerHealth = 100;
-    public float PlayerCurrentHp = 100;
+    static float PlayerHealth = 100;
+    public float PlayerCurrentHp = PlayerHealth;
 
     Vector2 position = Screen.RandomPoint();
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
-
+    public bool isTakingDamage = false;
     public Rectangle Bounds => new(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
@@ -398,6 +409,7 @@ class Player
     {
         position = Screen.RandomPoint();
         state = PlayerState.Idle;
+        PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
     }
 
@@ -406,6 +418,18 @@ class Player
         state = PlayerState.Attacking;
         animElapsed = 0;
     }
+
+    public void ReceiveDamage(float damage)
+    {
+        if (!isTakingDamage)
+        {
+            isTakingDamage = true;
+            PlayerCurrentHp = PlayerCurrentHp - damage >= 0 ? PlayerCurrentHp - damage : 0;
+            Console.WriteLine($"Current HP is {PlayerCurrentHp} and state {state} {isTakingDamage}");
+        }
+    }
+
+    public void DamageGone() => isTakingDamage = false;
 
     public void Update(float dt)
     {
@@ -442,7 +466,11 @@ class Player
         if (animElapsed >= AttackDuration) state = PlayerState.Idle;
     }
 
-    public void Draw() => Strip.Draw(CurrentFrame, Center, DrawSize);
+    public void Draw()
+    {
+        Strip.Draw(CurrentFrame, Center, DrawSize);
+        Raylib.DrawText($"❤ {PlayerCurrentHp}", 10, Screen.Height - 100, 48, Color.Red);
+    }
 }
 
 class Demon
