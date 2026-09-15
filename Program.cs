@@ -72,7 +72,8 @@ void setNewCircle()
 void scoreUp()
 {
     score += 10;
-    bonusTime = (int)endTimer - (int)Raylib.GetTime();
+    int rewardTime = (int)endTimer - (int)Raylib.GetTime();
+    bonusTime = rewardTime <= 5 ? rewardTime : 5;
     isDying = true;
 }
 
@@ -88,7 +89,6 @@ void startGame()
 while (!Raylib.WindowShouldClose())
 {
     Vector2 mousePoint = Raylib.GetMousePosition();
-    bool boost = false;
     float dt = Raylib.GetFrameTime();
     int currentScreenWidth = Raylib.GetScreenWidth();
     int currentScreenHeight = Raylib.GetScreenHeight();
@@ -98,10 +98,15 @@ while (!Raylib.WindowShouldClose())
     // Welcome screen handle & text
     if (!hasStarted && !isPlaying)
     {
+        const string titleText = "Hit them all!";
+        int titleFontSize = 80;
+        int titleSize = Raylib.MeasureText(titleText, titleFontSize);
+        Raylib.DrawText(titleText, currentScreenWidth / 2 - titleSize / 2, currentScreenHeight / 2 - titleFontSize - 20, titleFontSize, Color.Beige);
+
         const string startText = "Press any key to continue";
-        int fontSize = 48;
+        int fontSize = 32;
         int textSize = Raylib.MeasureText(startText, fontSize);
-        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 - fontSize / 2, fontSize, Color.Gray);
+        Raylib.DrawText(startText, currentScreenWidth / 2 - textSize / 2, currentScreenHeight / 2 + 20, fontSize, Color.Gray);
     }
     bool anyKey = Raylib.GetKeyPressed() != 0;
     bool anyMouse = Raylib.IsMouseButtonPressed(MouseButton.Left)
