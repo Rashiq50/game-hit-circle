@@ -143,8 +143,7 @@ while (!Raylib.WindowShouldClose())
             if (isClicked(mousePoint[0], mousePoint[1]) && !isDying) scoreUp();
         }
 
-        if (Raylib.IsKeyDown(KeyboardKey.LeftShift)) boost = true;
-        float currentSpeed = boost ? speed * boost_multiplier : speed;
+        float currentSpeed = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? speed * boost_multiplier : speed;
 
         if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
         if (topLeftX + sizeX > currentScreenWidth)
