@@ -6,7 +6,7 @@ const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
-Texture2D background = Raylib.LoadTexture("bg2.png");
+Texture2D background = Raylib.LoadTexture("tile.png");
 
 // enemy sprite sheets: horizontal strips of 256x256 frames
 Texture2D idleSheet = Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png");
