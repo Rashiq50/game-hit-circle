@@ -24,6 +24,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
     game.Update(Raylib.GetFrameTime());
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
+    camera.Target = new Vector2(Screen.Width / 2f, Screen.Height / 2f) + game.ShakeOffset;
     Raylib.BeginMode2D(camera);
     game.DrawWorld();
     Raylib.EndMode2D();
@@ -130,6 +131,16 @@ class Game
     const int MaxBonusTime = 5;
     const int PointsPerHit = 10;
     private readonly int DAMAGE_BY_PROJECTILE = 12;
+
+    const float ShakeDuration = 0.1f;
+    const float ShakeStrength = 6f; // pixels
+    float shakeTimeLeft;
+
+    public void Shake() => shakeTimeLeft = ShakeDuration;
+
+    public Vector2 ShakeOffset => shakeTimeLeft > 0
+        ? new Vector2(Random.Shared.NextSingle() * 2 - 1, Random.Shared.NextSingle() * 2 - 1) * ShakeStrength
+        : Vector2.Zero;
 
     static readonly string HighScorePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -248,6 +259,7 @@ class Game
 
     void UpdatePlaying(float dt)
     {
+        shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
         if (SecondsLeft < 0 || player.PlayerCurrentHp <= 0)
         {
             EndRound();
@@ -266,6 +278,7 @@ class Game
         {
             Console.Write("Hit !!!");
             PlayerHitByPt();
+            Shake();
         }
         else
         {
