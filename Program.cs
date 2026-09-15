@@ -45,6 +45,8 @@ float topLeftY = Random.Shared.Next(50, Raylib.GetScreenHeight() - 50);
 int sizeX = 40;
 int sizeY = 40;
 
+GameState gameState = GameState.Welcome;
+
 // game values
 int score = 0;
 const float boost_multiplier = 2f;
@@ -54,8 +56,8 @@ int circleRetryAttempts = 0;
 bool isDying = false;
 float eraseTime = 0.6f; // death animation duration
 float dyingElapsed = 0;
-bool hasStarted = false;
-bool isPlaying = false;
+// bool hasStarted = false;
+// bool isPlaying = false;
 double endTimer = 0;
 const int playTime = 5;
 int bonusTime = 0;
@@ -136,9 +138,8 @@ void scoreUp()
 void startGame()
 {
     score = 0;
-    hasStarted = true;
+    gameState = GameState.Playing;
     endTimer = Raylib.GetTime() + playTime;
-    isPlaying = true;
     setNewCircle();
 }
 
@@ -157,7 +158,7 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
         Vector2.Zero, 0, Color.White);
 
     // Welcome screen handle & text
-    if (!hasStarted && !isPlaying)
+    if (gameState.Equals(GameState.Welcome))
     {
         const string titleText = "Hit them all!";
         int titleFontSize = 80;
@@ -174,12 +175,12 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
                  || Raylib.IsMouseButtonPressed(MouseButton.Right)
                  || Raylib.IsMouseButtonPressed(MouseButton.Middle);
 
-    if (!hasStarted && (anyKey || anyMouse)) startGame();
+    if (gameState.Equals(GameState.Welcome) && (anyKey || anyMouse)) startGame();
 
     // Game over handle & text
-    if (isPlaying && Raylib.GetTime() > endTimer)
+    if (gameState.Equals(GameState.Playing) && Raylib.GetTime() > endTimer)
     {
-        isPlaying = false;
+        gameState = GameState.GameOver;
         endTimer = 0;
         if (score > highScore)
         {
@@ -187,12 +188,12 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
             saveHighScore();
         }
     }
-    if (hasStarted && !isPlaying)
+    if (gameState.Equals(GameState.GameOver))
     {
         if (Raylib.IsKeyPressed(KeyboardKey.R)) startGame();
         if (Raylib.IsKeyPressed(KeyboardKey.Q)) shouldQuit = true;
     }
-    if (hasStarted && !isPlaying)
+    if (gameState.Equals(GameState.GameOver))
     {
         const string gameOverText = "Game Over!";
         int fontSize = 62;
@@ -210,7 +211,7 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
     }
 
     // Main game
-    if (isPlaying)
+    if (gameState.Equals(GameState.Playing))
     {
         if (Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
@@ -342,7 +343,7 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
         }
         Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
         Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
-        if (hasStarted && endTimer != 0)
+        if (gameState.Equals(GameState.Playing) && endTimer != 0)
         {
             double currentTime = Raylib.GetTime();
             double diff = endTimer - currentTime;
@@ -361,3 +362,4 @@ foreach (var t in heroIdle.Concat(heroWalk).Concat(heroRun).Concat(heroAxe)) Ray
 Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
+enum GameState { Playing, GameOver, Welcome }
