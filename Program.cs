@@ -80,6 +80,7 @@ static class Assets
         foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
             Raylib.UnloadTexture(strip.Texture);
         Raylib.UnloadSound(SwordSound);
+        Raylib.UnloadSound(ScoreSound);
     }
 
     static SpriteStrip[] LoadHeroStrips(string basePath)
