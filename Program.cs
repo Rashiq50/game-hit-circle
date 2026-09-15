@@ -200,7 +200,8 @@ class Game
         popup.Update(dt);
 
         bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
-        if (demon.IsAlive && (clickedDemon || demon.Overlaps(player))) OnHit();
+        if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
+        if (demon.IsAlive && player.SwingLanded) demon.Kill();
 
         demon.Update(dt);
         if (demon.IsDead)
@@ -212,12 +213,12 @@ class Game
         }
     }
 
-    void OnHit()
+    // Score is banked when the swing starts; the demon dies when the swing lands (see UpdatePlaying).
+    void StartSwing()
     {
         score += PointsPerHit;
         bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         player.Attack();
-        demon.Kill();
     }
 
     static bool AnyInputPressed() =>
@@ -290,6 +291,7 @@ class Player
     const float BoostMultiplier = 2.5f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
+    const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
 
     Vector2 position = Screen.RandomPoint();
     PlayerState state = PlayerState.Idle;
@@ -297,6 +299,10 @@ class Player
     float animElapsed;
 
     public Rectangle Bounds => new(position.X, position.Y, Size, Size);
+    public bool IsAttacking => state == PlayerState.Attacking;
+    /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
+    public bool SwingLanded { get; private set; }
+
     Vector2 Center => position + new Vector2(Size / 2f);
 
     SpriteStrip Strip => (state switch
@@ -308,6 +314,10 @@ class Player
     })[(int)facing];
 
     float AttackDuration => Strip.FrameCount / AnimFps;
+
+    int CurrentFrame => IsAttacking
+        ? Strip.OneShotFrame(animElapsed, AttackDuration)
+        : Strip.LoopFrame(animElapsed, AnimFps);
 
     public void Reset()
     {
@@ -324,10 +334,14 @@ class Player
 
     public void Update(float dt)
     {
-        animElapsed += dt;
-        if (state == PlayerState.Attacking && animElapsed >= AttackDuration)
-            state = PlayerState.Idle;
+        SwingLanded = false;
+        if (IsAttacking)
+        {
+            UpdateAttack(dt);
+            return;
+        }
 
+        animElapsed += dt;
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
         float step = (boosting ? Speed * BoostMultiplier : Speed) * dt;
 
@@ -337,22 +351,23 @@ class Player
         if (Raylib.IsKeyDown(KeyboardKey.W)) { move.Y -= step; facing = Direction.Up; }
         if (Raylib.IsKeyDown(KeyboardKey.S)) { move.Y += step; facing = Direction.Down; }
 
-        if (move != Vector2.Zero)
-            state = boosting ? PlayerState.Running : PlayerState.Walking;
-        else if (state != PlayerState.Attacking)
-            state = PlayerState.Idle;
+        state = move == Vector2.Zero ? PlayerState.Idle
+              : boosting ? PlayerState.Running
+              : PlayerState.Walking;
 
         position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(Screen.Width - Size, Screen.Height - Size));
     }
 
-    public void Draw()
+    // The swing plays to completion; movement input is ignored until it finishes.
+    void UpdateAttack(float dt)
     {
-        var strip = Strip;
-        int frame = state == PlayerState.Attacking
-            ? strip.OneShotFrame(animElapsed, AttackDuration)
-            : strip.LoopFrame(animElapsed, AnimFps);
-        strip.Draw(frame, Center, DrawSize);
+        int frameBefore = CurrentFrame;
+        animElapsed += dt;
+        SwingLanded = frameBefore < AttackImpactFrame && CurrentFrame >= AttackImpactFrame;
+        if (animElapsed >= AttackDuration) state = PlayerState.Idle;
     }
+
+    public void Draw() => Strip.Draw(CurrentFrame, Center, DrawSize);
 }
 
 class Demon
