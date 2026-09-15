@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Include="bg.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="textures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

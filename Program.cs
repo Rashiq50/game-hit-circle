@@ -7,10 +7,37 @@ Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
 Texture2D background = Raylib.LoadTexture("bg.png");
+
+// enemy sprite sheets: horizontal strips of 256x256 frames
+Texture2D idleSheet = Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png");
+Texture2D deathSheet = Raylib.LoadTexture("textures/Enemy-Melee-Death.png");
+const int frameSize = 256;
+int idleFrameCount = idleSheet.Width / frameSize;
+int deathFrameCount = deathSheet.Width / frameSize;
+const float idleFps = 12f;
+const float spriteDrawSize = 110f; // on-screen size of one frame
+float idleElapsed = 0;
+
+// hero sprite strips: 80x80 frames, one strip per facing direction (index = Direction)
+const int heroFrameSize = 80;
+const float heroDrawSize = 96f;
+const float heroAnimFps = 10f;
+Texture2D[] heroIdle = loadHeroStrips("idle/idle");
+Texture2D[] heroWalk = loadHeroStrips("walk/walk");
+Texture2D[] heroRun = loadHeroStrips("run/run");
+Texture2D[] heroAxe = loadHeroStrips("axe attack/axe_attack");
+Direction heroFacing = Direction.Down;
+float heroAnimElapsed = 0;
+
+Texture2D[] loadHeroStrips(string basePath)
+{
+    string[] suffixes = { "down", "up", "left", "right" };
+    return suffixes.Select(d => Raylib.LoadTexture($"textures/hero/{basePath}_{d}.png")).ToArray();
+}
 // circle values
 float centerX = 0;
 float centerY = 0;
-float radius = 25;
+float radius = 35;
 
 // cube values
 float topLeftX = Random.Shared.Next(50, Raylib.GetScreenWidth() - 50);
@@ -25,7 +52,7 @@ const float speed = 100f;
 const int circleRetryAttemptCap = 10;
 int circleRetryAttempts = 0;
 bool isDying = false;
-float eraseTime = 0.2f;
+float eraseTime = 0.6f; // death animation duration
 float dyingElapsed = 0;
 bool hasStarted = false;
 bool isPlaying = false;
@@ -192,22 +219,23 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
 
         float currentSpeed = Raylib.IsKeyDown(KeyboardKey.LeftShift) ? speed * boost_multiplier : speed;
 
-        if (Raylib.IsKeyDown(KeyboardKey.D)) topLeftX += currentSpeed * dt;
+        bool isMoving = false;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) { topLeftX += currentSpeed * dt; heroFacing = Direction.Right; isMoving = true; }
         if (topLeftX + sizeX > currentScreenWidth)
         {
             topLeftX = currentScreenWidth - sizeX;
         }
-        if (Raylib.IsKeyDown(KeyboardKey.A)) topLeftX -= currentSpeed * dt;
+        if (Raylib.IsKeyDown(KeyboardKey.A)) { topLeftX -= currentSpeed * dt; heroFacing = Direction.Left; isMoving = true; }
         if (topLeftX <= 0)
         {
             topLeftX = 0;
         }
-        if (Raylib.IsKeyDown(KeyboardKey.W)) topLeftY -= currentSpeed * dt;
+        if (Raylib.IsKeyDown(KeyboardKey.W)) { topLeftY -= currentSpeed * dt; heroFacing = Direction.Up; isMoving = true; }
         if (topLeftY <= 0)
         {
             topLeftY = 0;
         }
-        if (Raylib.IsKeyDown(KeyboardKey.S)) topLeftY += currentSpeed * dt;
+        if (Raylib.IsKeyDown(KeyboardKey.S)) { topLeftY += currentSpeed * dt; heroFacing = Direction.Down; isMoving = true; }
         if (topLeftY + sizeY > currentScreenHeight)
         {
             topLeftY = currentScreenHeight - sizeY;
@@ -219,15 +247,12 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
         {
             if (dyingElapsed <= eraseTime)
             {
-                float t = dyingElapsed / eraseTime;
-                radius *= 1 - t;
                 dyingElapsed += dt;
             }
             else
             {
                 isDying = false;
                 dyingElapsed = 0;
-                radius = 25;
                 popupActive = true;
                 popupX = centerX;
                 popupY = centerY;
@@ -238,8 +263,46 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
             }
         }
 
-        Raylib.DrawRectangleV(new Vector2(topLeftX, topLeftY), new Vector2(sizeX, sizeY), Color.DarkBlue);
-        Raylib.DrawCircleV(new Vector2(centerX, centerY), radius, Raylib.Fade(Color.Beige, 1));
+        // hero sprite: axe attack while colliding with a dying enemy, run when boosted, walk when moving, idle otherwise
+        Texture2D heroSheet;
+        int heroFrame;
+        bool isAttacking = isDying && hasHit(centerX, centerY);
+        if (isAttacking)
+        {
+            heroSheet = heroAxe[(int)heroFacing];
+            int attackFrames = heroSheet.Width / heroFrameSize;
+            heroFrame = Math.Min((int)(dyingElapsed / eraseTime * attackFrames), attackFrames - 1);
+        }
+        else
+        {
+            heroSheet = (isMoving && Raylib.IsKeyDown(KeyboardKey.LeftShift) ? heroRun
+                       : isMoving ? heroWalk
+                       : heroIdle)[(int)heroFacing];
+            heroAnimElapsed += dt;
+            heroFrame = (int)(heroAnimElapsed * heroAnimFps) % (heroSheet.Width / heroFrameSize);
+        }
+        Raylib.DrawTexturePro(heroSheet,
+            new Rectangle(heroFrame * heroFrameSize, 0, heroFrameSize, heroFrameSize),
+            new Rectangle(topLeftX + sizeX / 2f - heroDrawSize / 2, topLeftY + sizeY / 2f - heroDrawSize / 2, heroDrawSize, heroDrawSize),
+            Vector2.Zero, 0, Color.White);
+        // enemy sprite: death animation plays once while dying, idle loops otherwise
+        Texture2D sheet;
+        int frame;
+        if (isDying)
+        {
+            sheet = deathSheet;
+            frame = Math.Min((int)(dyingElapsed / eraseTime * deathFrameCount), deathFrameCount - 1);
+        }
+        else
+        {
+            sheet = idleSheet;
+            idleElapsed += dt;
+            frame = (int)(idleElapsed * idleFps) % idleFrameCount;
+        }
+        Raylib.DrawTexturePro(sheet,
+            new Rectangle(frame * frameSize, 0, frameSize, frameSize),
+            new Rectangle(centerX - spriteDrawSize / 2, centerY - spriteDrawSize / 2, spriteDrawSize, spriteDrawSize),
+            Vector2.Zero, 0, Color.White);
 
         // Floating "+10" popup with animation
         if (popupActive)
@@ -292,4 +355,9 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
 }
 
 Raylib.UnloadTexture(background);
+Raylib.UnloadTexture(idleSheet);
+Raylib.UnloadTexture(deathSheet);
+foreach (var t in heroIdle.Concat(heroWalk).Concat(heroRun).Concat(heroAxe)) Raylib.UnloadTexture(t);
 Raylib.CloseWindow();
+
+enum Direction { Down, Up, Left, Right }
