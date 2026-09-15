@@ -217,7 +217,6 @@ class Game
     readonly Player player = new();
     readonly Demon demon = new();
     readonly ScorePopup popup = new();
-    readonly EnemyProjectile projectile = new();
 
     GameState state = GameState.Welcome;
     // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
@@ -267,7 +266,6 @@ class Game
             player.Draw();
             demon.Draw();
             popup.Draw();
-            projectile.Draw();
         }
     }
 
@@ -303,8 +301,8 @@ class Game
         highScore = checkpoint.HighScore;
         bonusTime = 0;
         player.Reset();
+        demon.ClearProjectiles();
         demon.Respawn(player);
-        projectile.Show(demon.Center, player.GetCurrentPosition);
     }
 
     // The round timer is wall-clock based, so the time spent paused is added back on resume.
@@ -343,31 +341,24 @@ class Game
 
         player.Update(dt);
         popup.Update(dt);
-        projectile.Update(dt);
 
         bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
         if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
         if (demon.IsAlive && player.SwingLanded) demon.Kill();
 
-        if (projectile.Overlaps(player))
+        demon.Update(dt, player);
+        if (demon.ConsumeProjectileHit(player))
         {
-            Console.Write("Hit !!!");
             PlayerHitByPt();
             Shake();
         }
-        else
-        {
-            player.DamageGone();
-        }
 
-        demon.Update(dt);
         if (demon.IsDead)
         {
             Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
             Raylib.PlaySound(Assets.ScoreSound);
             popup.Show(demon.Center);
             demon.Respawn(player);
-            projectile.Show(demon.Center, player.GetCurrentPosition);
             // endTime = Raylib.GetTime() + PlayTime + bonusTime;
             // bonusTime = 0;
         }
@@ -478,15 +469,12 @@ class Player
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
-    public bool isTakingDamage = false;
     public Rectangle Bounds => new(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
     public bool SwingLanded { get; private set; }
 
-    Vector2 Center => position + new Vector2(Size / 2f);
-
-    public Vector2 GetCurrentPosition => position;
+    public Vector2 Center => position + new Vector2(Size / 2f);
 
     SpriteStrip Strip => (state switch
     {
@@ -516,17 +504,7 @@ class Player
         animElapsed = 0;
     }
 
-    public void ReceiveDamage(float damage)
-    {
-        if (!isTakingDamage)
-        {
-            isTakingDamage = true;
-            PlayerCurrentHp = PlayerCurrentHp - damage >= 0 ? PlayerCurrentHp - damage : 0;
-            Console.WriteLine($"Current HP is {PlayerCurrentHp} and state {state} {isTakingDamage}");
-        }
-    }
-
-    public void DamageGone() => isTakingDamage = false;
+    public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
 
     public void Update(float dt)
     {
@@ -573,10 +551,14 @@ class Demon
     const float IdleFps = 12f;
     const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
+    const float FireInterval = 2f; // seconds between shots while alive
 
     public Vector2 Center;
     DemonState state = DemonState.Idle;
     float animElapsed;
+    float fireCooldown;
+    // Shots already in flight outlive the demon that fired them; they only vanish off-screen or on hit.
+    readonly List<EnemyProjectile> projectiles = [];
 
     public bool IsAlive => state == DemonState.Idle;
     public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
@@ -603,9 +585,37 @@ class Demon
         Center = candidate;
         state = DemonState.Idle;
         animElapsed = 0;
+        fireCooldown = FireInterval;
     }
 
-    public void Update(float dt) => animElapsed += dt;
+    public void ClearProjectiles() => projectiles.Clear();
+
+    public void Update(float dt, Player player)
+    {
+        animElapsed += dt;
+
+        if (IsAlive)
+        {
+            fireCooldown -= dt;
+            if (fireCooldown <= 0)
+            {
+                projectiles.Add(new EnemyProjectile(Center, player.Center));
+                fireCooldown += FireInterval;
+            }
+        }
+
+        foreach (var p in projectiles) p.Update(dt);
+        projectiles.RemoveAll(p => !p.Active);
+    }
+
+    /// <summary>True if any projectile hit the player this frame; the projectile is spent so it can only hit once.</summary>
+    public bool ConsumeProjectileHit(Player player)
+    {
+        var hit = projectiles.Find(p => p.Overlaps(player));
+        if (hit is null) return false;
+        hit.Active = false;
+        return true;
+    }
 
     public void Draw()
     {
@@ -614,6 +624,7 @@ class Demon
             ? strip.OneShotFrame(animElapsed, DeathDuration)
             : strip.LoopFrame(animElapsed, IdleFps);
         strip.Draw(frame, Center, DrawSize);
+        foreach (var p in projectiles) p.Draw();
     }
 }
 
@@ -663,40 +674,33 @@ class ScorePopup
     }
 }
 
-class EnemyProjectile
+/// <summary>A single shot fired by a demon: flies in a straight line toward where the player was until it leaves the world or hits.</summary>
+class EnemyProjectile(Vector2 from, Vector2 toward)
 {
     const float Speed = 400f;
     const float Radius = 15f;
 
-    bool active;
-    Vector2 position;
-    Vector2 direction;
-    Rectangle Bounds => BoundsAt(position);
-    static Rectangle BoundsAt(Vector2 center) =>
-    new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
-    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
-    public void Show(Vector2 at, Vector2 to)
-    {
-        active = true;
-        position = at;
-        direction = Vector2.Normalize(to - at);
-    }
+    Vector2 position = from;
+    readonly Vector2 direction = Vector2.Normalize(toward - from);
+
+    public bool Active { get; set; } = true;
+    Rectangle Bounds => new(position.X - Radius, position.Y - Radius, Radius * 2, Radius * 2);
+
+    public bool Overlaps(Player player) => Active && Raylib.CheckCollisionRecs(Bounds, player.Bounds);
 
     public void Draw()
     {
-        if (!active) return;
-
-        Raylib.DrawCircleV(position, Radius, Color.Gold);
+        if (Active) Raylib.DrawCircleV(position, Radius, Color.Gold);
     }
 
     public void Update(float dt)
     {
-        if (!active) return;
+        if (!Active) return;
 
         position += direction * Speed * dt;
 
         bool offScreen = position.X < -Radius || position.X > World.Width + Radius
                       || position.Y < -Radius || position.Y > World.Height + Radius;
-        if (offScreen) active = false;
+        if (offScreen) Active = false;
     }
 }
