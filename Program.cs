@@ -47,8 +47,8 @@ int sizeY = 40;
 
 // game values
 int score = 0;
-const float boost_multiplier = 2.5f;
-const float speed = 100f;
+const float boost_multiplier = 2f;
+const float speed = 150f;
 const int circleRetryAttemptCap = 10;
 int circleRetryAttempts = 0;
 bool isDying = false;
