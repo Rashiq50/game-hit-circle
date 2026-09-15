@@ -33,6 +33,33 @@ const int playTime = 5;
 int bonusTime = 0;
 bool shouldQuit = false;
 
+// high score, persisted to a file in the user's local app data folder
+string highScorePath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "HitThemAll", "highscore.txt");
+int highScore = loadHighScore();
+
+int loadHighScore()
+{
+    try
+    {
+        if (File.Exists(highScorePath) && int.TryParse(File.ReadAllText(highScorePath), out int saved))
+            return saved;
+    }
+    catch (IOException) { }
+    return 0;
+}
+
+void saveHighScore()
+{
+    try
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(highScorePath)!);
+        File.WriteAllText(highScorePath, highScore.ToString());
+    }
+    catch (IOException) { }
+}
+
 // score popup values
 bool popupActive = false;
 float popupX = 0;
@@ -121,6 +148,11 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
     {
         isPlaying = false;
         endTimer = 0;
+        if (score > highScore)
+        {
+            highScore = score;
+            saveHighScore();
+        }
     }
     if (hasStarted && !isPlaying)
     {
@@ -239,8 +271,8 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
                 popupElapsed += dt;
             }
         }
-        Raylib.DrawText($"Score:", 20, 20, 18, Color.White);
-        Raylib.DrawText($" {score}", 90, 20, 18, Color.White);
+        Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
+        Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
         if (hasStarted && endTimer != 0)
         {
             double currentTime = Raylib.GetTime();
