@@ -4,6 +4,15 @@ using Raylib_cs;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.InitAudioDevice();
+
+var camera = new Camera2D
+{
+    Target = new Vector2(Screen.Width / 2f, Screen.Height / 2f),
+    Offset = new Vector2(Screen.Width / 2f, Screen.Height / 2f),
+    Rotation = 0f,
+    Zoom = 1f,
+};
+
 Raylib.SetTargetFPS(60);
 Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 
@@ -13,10 +22,12 @@ var game = new Game();
 while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 {
     game.Update(Raylib.GetFrameTime());
-
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
-    game.Draw();
+    Raylib.BeginMode2D(camera);
+    game.DrawWorld();
+    Raylib.EndMode2D();
+    game.DrawUi(); // HUD and menus stay in screen space, unaffected by camera pan/zoom
     Raylib.EndDrawing();
 }
 
@@ -166,9 +177,20 @@ class Game
         }
     }
 
-    public void Draw()
+    public void DrawWorld()
     {
         DrawBackground();
+        if (state is GameState.Playing or GameState.Paused)
+        {
+            player.Draw();
+            demon.Draw();
+            popup.Draw();
+            projectile.Draw();
+        }
+    }
+
+    public void DrawUi()
+    {
         switch (state)
         {
             case GameState.Welcome:
@@ -176,11 +198,11 @@ class Game
                 break;
 
             case GameState.Playing:
-                DrawPlaying();
+                DrawHud();
                 break;
 
             case GameState.Paused:
-                DrawPlaying();
+                DrawHud();
                 DrawPauseOverlay();
                 break;
 
@@ -312,15 +334,6 @@ class Game
         Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
 
-    void DrawPlaying()
-    {
-        player.Draw();
-        demon.Draw();
-        popup.Draw();
-        DrawHud();
-        projectile.Draw();
-    }
-
     static void DrawPauseOverlay()
     {
         const float coverage = 0.8f;
@@ -341,6 +354,21 @@ class Game
         Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
         Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
+        DrawHealthBar();
+    }
+
+    void DrawHealthBar()
+    {
+        const int barWidth = 200;
+        const int barHeight = 20;
+        const int margin = 20;
+        int x = margin;
+        int y = Screen.Height - margin - barHeight;
+        int fill = (int)(barWidth * player.HealthFraction);
+
+        Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
+        Raylib.DrawRectangle(x, y, fill, barHeight, Color.Red);
+        Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
     }
 
     static int LoadHighScore()
@@ -376,6 +404,7 @@ class Player
     const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
     static float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
+    public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
 
     Vector2 position = Screen.RandomPoint();
     PlayerState state = PlayerState.Idle;
@@ -466,11 +495,7 @@ class Player
         if (animElapsed >= AttackDuration) state = PlayerState.Idle;
     }
 
-    public void Draw()
-    {
-        Strip.Draw(CurrentFrame, Center, DrawSize);
-        Raylib.DrawText($"❤ {PlayerCurrentHp}", 10, Screen.Height - 100, 48, Color.Red);
-    }
+    public void Draw() => Strip.Draw(CurrentFrame, Center, DrawSize);
 }
 
 class Demon
