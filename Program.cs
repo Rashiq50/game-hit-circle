@@ -5,6 +5,7 @@ Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.InitAudioDevice();
 Raylib.SetTargetFPS(60);
+Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
 var game = new Game();
@@ -24,7 +25,7 @@ Raylib.CloseAudioDevice();
 Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
-enum GameState { Welcome, Playing, GameOver }
+enum GameState { Welcome, Playing, Paused, GameOver }
 enum PlayerState { Idle, Walking, Running, Attacking }
 enum DemonState { Idle, Dying }
 
@@ -56,6 +57,8 @@ static class Assets
     public static Texture2D Background;
     public static SpriteStrip DemonIdle, DemonDeath;
     public static Sound SwordSound, ScoreSound, GameOver;
+
+    public static Color OverlayBlack = new Color(0, 0, 0, 150);
     // one strip per facing direction, indexed by (int)Direction
     public static SpriteStrip[] HeroIdle = [], HeroWalk = [], HeroRun = [], HeroAxe = [];
 
@@ -129,10 +132,12 @@ class Game
     int highScore = LoadHighScore();
     int bonusTime;
     double endTime;
+    double pauseStart;
 
     public bool QuitRequested { get; private set; }
 
-    int SecondsLeft => (int)(endTime - Raylib.GetTime());
+    // While paused the clock is frozen at the moment the pause began (Resume shifts endTime by the same amount).
+    int SecondsLeft => (int)(endTime - (state == GameState.Paused ? pauseStart : Raylib.GetTime()));
 
     public void Update(float dt)
     {
@@ -143,7 +148,13 @@ class Game
                 break;
 
             case GameState.Playing:
-                UpdatePlaying(dt);
+                if (Raylib.IsKeyPressed(KeyboardKey.Escape)) Pause();
+                else UpdatePlaying(dt);
+                break;
+
+            case GameState.Paused:
+                if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.R)) Resume();
+                if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
                 break;
 
             case GameState.GameOver:
@@ -163,10 +174,12 @@ class Game
                 break;
 
             case GameState.Playing:
-                player.Draw();
-                demon.Draw();
-                popup.Draw();
-                DrawHud();
+                DrawPlaying();
+                break;
+
+            case GameState.Paused:
+                DrawPlaying();
+                DrawPauseOverlay();
                 break;
 
             case GameState.GameOver:
@@ -183,6 +196,19 @@ class Game
         endTime = Raylib.GetTime() + PlayTime;
         player.Reset();
         demon.Respawn(player);
+    }
+
+    // The round timer is wall-clock based, so the time spent paused is added back on resume.
+    void Pause()
+    {
+        state = GameState.Paused;
+        pauseStart = Raylib.GetTime();
+    }
+
+    void Resume()
+    {
+        state = GameState.Playing;
+        endTime += Raylib.GetTime() - pauseStart;
     }
 
     void EndRound()
@@ -262,6 +288,28 @@ class Game
 
         Screen.DrawCenteredText("Game Over!", Screen.Height / 2 - titleFontSize / 2, titleFontSize, Color.Red);
         Screen.DrawCenteredText("[R] Replay", optionY, optionFontSize, Color.Gray);
+        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+    }
+
+    void DrawPlaying()
+    {
+        player.Draw();
+        demon.Draw();
+        popup.Draw();
+        DrawHud();
+    }
+
+    static void DrawPauseOverlay()
+    {
+        const float coverage = 0.8f;
+        const int optionFontSize = 28;
+        int w = (int)(Screen.Width * coverage);
+        int h = (int)(Screen.Height * coverage);
+        int optionY = Screen.Height / 2 - optionFontSize - 5;
+
+        Raylib.DrawRectangle((Screen.Width - w) / 2, (Screen.Height - h) / 2, w, h, Color.Black);
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
+        Screen.DrawCenteredText("[Esc]/[R] Resume", optionY, optionFontSize, Color.Gray);
         Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
 
