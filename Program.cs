@@ -197,7 +197,7 @@ class Game
         endTime = Raylib.GetTime() + PlayTime;
         player.Reset();
         demon.Respawn(player);
-        projectile.Show(demon.Center, player.getCurrentPosition);
+        projectile.Show(demon.Center, player.GetCurrentPosition);
     }
 
     // The round timer is wall-clock based, so the time spent paused is added back on resume.
@@ -239,6 +239,11 @@ class Game
         if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
         if (demon.IsAlive && player.SwingLanded) demon.Kill();
 
+        if (projectile.Overlaps(player))
+        {
+            Console.Write("Hit !!!");
+        }
+
         demon.Update(dt);
         if (demon.IsDead)
         {
@@ -246,7 +251,7 @@ class Game
             Raylib.PlaySound(Assets.ScoreSound);
             popup.Show(demon.Center);
             demon.Respawn(player);
-            projectile.Show(demon.Center, player.getCurrentPosition);
+            projectile.Show(demon.Center, player.GetCurrentPosition);
             endTime = Raylib.GetTime() + PlayTime + bonusTime;
             bonusTime = 0;
         }
@@ -256,6 +261,7 @@ class Game
     // Score is banked when the swing starts; the demon dies when the swing lands (see UpdatePlaying).
     void StartSwing()
     {
+        Console.Write("Swing !!!");
         score += PointsPerHit;
         bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
@@ -352,7 +358,7 @@ class Game
 class Player
 {
     const int Size = 40;
-    const float Speed = 100f;
+    const float Speed = 300f;
     const float BoostMultiplier = 2.5f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
@@ -373,7 +379,7 @@ class Player
 
     Vector2 Center => position + new Vector2(Size / 2f);
 
-    public Vector2 getCurrentPosition => position;
+    public Vector2 GetCurrentPosition => position;
 
     SpriteStrip Strip => (state switch
     {
@@ -545,7 +551,10 @@ class EnemyProjectile
     bool active;
     Vector2 position;
     Vector2 direction;
-
+    Rectangle Bounds => BoundsAt(position);
+    static Rectangle BoundsAt(Vector2 center) =>
+    new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
+    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
     public void Show(Vector2 at, Vector2 to)
     {
         active = true;
