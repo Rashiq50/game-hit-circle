@@ -155,13 +155,13 @@ class Game
     int score;
     int highScore = LoadHighScore();
     int bonusTime;
-    double endTime;
+    // double endTime;
     double pauseStart;
 
     public bool QuitRequested { get; private set; }
 
     // While paused the clock is frozen at the moment the pause began (Resume shifts endTime by the same amount).
-    int SecondsLeft => (int)(endTime - (state == GameState.Paused ? pauseStart : Raylib.GetTime()));
+    // int SecondsLeft => (int)(endTime - (state == GameState.Paused ? pauseStart : Raylib.GetTime()));
 
     public void Update(float dt)
     {
@@ -228,7 +228,6 @@ class Game
         state = GameState.Playing;
         score = 0;
         bonusTime = 0;
-        endTime = Raylib.GetTime() + PlayTime;
         player.Reset();
         demon.Respawn(player);
         projectile.Show(demon.Center, player.GetCurrentPosition);
@@ -244,7 +243,6 @@ class Game
     void Resume()
     {
         state = GameState.Playing;
-        endTime += Raylib.GetTime() - pauseStart;
     }
 
     void EndRound()
@@ -260,7 +258,7 @@ class Game
     void UpdatePlaying(float dt)
     {
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
-        if (SecondsLeft < 0 || player.PlayerCurrentHp <= 0)
+        if (player.PlayerCurrentHp <= 0)
         {
             EndRound();
             return;
@@ -293,8 +291,8 @@ class Game
             popup.Show(demon.Center);
             demon.Respawn(player);
             projectile.Show(demon.Center, player.GetCurrentPosition);
-            endTime = Raylib.GetTime() + PlayTime + bonusTime;
-            bonusTime = 0;
+            // endTime = Raylib.GetTime() + PlayTime + bonusTime;
+            // bonusTime = 0;
         }
 
     }
@@ -303,7 +301,7 @@ class Game
     void StartSwing()
     {
         score += PointsPerHit;
-        bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
+        // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
         player.Attack();
@@ -365,7 +363,7 @@ class Game
     {
         Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
         Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
-        Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
+        // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
     }
