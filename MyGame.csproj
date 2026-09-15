@@ -10,6 +10,7 @@
   <ItemGroup>
     <None Include="bg2.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="textures\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="sounds\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

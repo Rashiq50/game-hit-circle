@@ -3,6 +3,7 @@ using Raylib_cs;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1000, 600, "Hit them all!");
+Raylib.InitAudioDevice();
 Raylib.SetTargetFPS(60);
 
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
@@ -19,6 +20,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 }
 
 Assets.Unload();
+Raylib.CloseAudioDevice();
 Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
@@ -53,6 +55,7 @@ static class Assets
 
     public static Texture2D Background;
     public static SpriteStrip DemonIdle, DemonDeath;
+    public static Sound SwordSound, ScoreSound, GameOver;
     // one strip per facing direction, indexed by (int)Direction
     public static SpriteStrip[] HeroIdle = [], HeroWalk = [], HeroRun = [], HeroAxe = [];
 
@@ -65,6 +68,8 @@ static class Assets
         HeroWalk = LoadHeroStrips("walk/walk");
         HeroRun = LoadHeroStrips("run/run");
         HeroAxe = LoadHeroStrips("axe attack/axe_attack");
+        SwordSound = Raylib.LoadSound("sounds/violent-sword-slice-393848.mp3");
+        ScoreSound = Raylib.LoadSound("sounds/level-up-523624.mp3");
     }
 
     public static void Unload()
@@ -74,6 +79,7 @@ static class Assets
         Raylib.UnloadTexture(DemonDeath.Texture);
         foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
             Raylib.UnloadTexture(strip.Texture);
+        Raylib.UnloadSound(SwordSound);
     }
 
     static SpriteStrip[] LoadHeroStrips(string basePath)
@@ -206,6 +212,8 @@ class Game
         demon.Update(dt);
         if (demon.IsDead)
         {
+            Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+            Raylib.PlaySound(Assets.ScoreSound);
             popup.Show(demon.Center);
             demon.Respawn(player);
             endTime = Raylib.GetTime() + PlayTime + bonusTime;
@@ -218,6 +226,8 @@ class Game
     {
         score += PointsPerHit;
         bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
+        Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
+        Raylib.PlaySound(Assets.SwordSound);
         player.Attack();
     }
 
