@@ -26,8 +26,8 @@ Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
 enum GameState { Welcome, Playing, Paused, GameOver }
-enum PlayerState { Idle, Walking, Running, Attacking }
-enum DemonState { Idle, Dying }
+enum PlayerState { Idle, Walking, Running, Attacking, Dead }
+enum DemonState { Idle, Dying, Attacking }
 
 /// <summary>A horizontal sprite sheet of square frames, plus the frame arithmetic every animation needs.</summary>
 readonly record struct SpriteStrip(Texture2D Texture, int FrameSize)
@@ -126,6 +126,7 @@ class Game
     readonly Player player = new();
     readonly Demon demon = new();
     readonly ScorePopup popup = new();
+    readonly EnemyProjectile projectile = new();
 
     GameState state = GameState.Welcome;
     int score;
@@ -196,6 +197,7 @@ class Game
         endTime = Raylib.GetTime() + PlayTime;
         player.Reset();
         demon.Respawn(player);
+        projectile.Show(demon.Center, player.getCurrentPosition);
     }
 
     // The round timer is wall-clock based, so the time spent paused is added back on resume.
@@ -231,6 +233,7 @@ class Game
 
         player.Update(dt);
         popup.Update(dt);
+        projectile.Update(dt);
 
         bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
         if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
@@ -243,9 +246,11 @@ class Game
             Raylib.PlaySound(Assets.ScoreSound);
             popup.Show(demon.Center);
             demon.Respawn(player);
+            projectile.Show(demon.Center, player.getCurrentPosition);
             endTime = Raylib.GetTime() + PlayTime + bonusTime;
             bonusTime = 0;
         }
+
     }
 
     // Score is banked when the swing starts; the demon dies when the swing lands (see UpdatePlaying).
@@ -297,6 +302,7 @@ class Game
         demon.Draw();
         popup.Draw();
         DrawHud();
+        projectile.Draw();
     }
 
     static void DrawPauseOverlay()
@@ -352,6 +358,8 @@ class Player
     const float AnimFps = 10f;
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3; // the slash frame of the axe strip (0-2 wind-up, 4-6 recovery)
+    int PlayerHealth = 100;
+    public float PlayerCurrentHp = 100;
 
     Vector2 position = Screen.RandomPoint();
     PlayerState state = PlayerState.Idle;
@@ -364,6 +372,8 @@ class Player
     public bool SwingLanded { get; private set; }
 
     Vector2 Center => position + new Vector2(Size / 2f);
+
+    public Vector2 getCurrentPosition => position;
 
     SpriteStrip Strip => (state switch
     {
@@ -524,5 +534,40 @@ class ScorePopup
             (int)(origin.Y - fontSize / 2f - drift),
             fontSize,
             Raylib.Fade(Color.Green, alpha));
+    }
+}
+
+class EnemyProjectile
+{
+    const float Speed = 400f;
+    const float Radius = 15f;
+
+    bool active;
+    Vector2 position;
+    Vector2 direction;
+
+    public void Show(Vector2 at, Vector2 to)
+    {
+        active = true;
+        position = at;
+        direction = Vector2.Normalize(to - at);
+    }
+
+    public void Draw()
+    {
+        if (!active) return;
+
+        Raylib.DrawCircleV(position, Radius, Color.Gold);
+    }
+
+    public void Update(float dt)
+    {
+        if (!active) return;
+
+        position += direction * Speed * dt;
+
+        bool offScreen = position.X < -Radius || position.X > Screen.Width + Radius
+                      || position.Y < -Radius || position.Y > Screen.Height + Radius;
+        if (offScreen) active = false;
     }
 }
