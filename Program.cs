@@ -1,5 +1,6 @@
-using System.Numerics;
+﻿using System.Numerics;
 using System.Text.Json;
+using System.Xml.Linq;
 using Raylib_cs;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
@@ -10,6 +11,7 @@ Raylib.SetTargetFPS(60);
 Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
+CollisionMap.Load("assets/dungeon.tmx");
 var game = new Game();
 
 while (!Raylib.WindowShouldClose() && !game.QuitRequested)
@@ -169,6 +171,7 @@ static class World
     public const int Width = 1000;
     public const int Height = 600;
     const int SpawnMargin = 50;
+    const int SpawnClearance = 60; // spawn box must fit the player (40) and demon (50) hit boxes
 
     public static readonly Vector2 Center = new(Width / 2f, Height / 2f);
     public static Camera2D Camera = new() { Target = Center, Zoom = 1f };
@@ -184,9 +187,55 @@ static class World
     /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
     public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);
 
-    public static Vector2 RandomPoint() => new(
-        Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
-        Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+    /// <summary>A random spot that leaves a <see cref="SpawnClearance"/> box around it clear of walls.</summary>
+    public static Vector2 RandomPoint()
+    {
+        Vector2 p;
+        do
+        {
+            p = new(Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
+                    Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+        } while (CollisionMap.Blocks(new Rectangle(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance)));
+        return p;
+    }
+}
+
+/// <summary>
+/// Solid areas read from the Tiled map's object layer. The map is authored over the background image, so its
+/// rectangles are stretched into world units exactly the way the background is drawn.
+/// </summary>
+static class CollisionMap
+{
+    static readonly List<Rectangle> walls = [];
+
+    public static void Load(string tmxPath)
+    {
+        walls.Clear();
+        var map = XDocument.Load(tmxPath).Root!;
+        var image = map.Element("imagelayer")?.Element("image");
+        float srcWidth = (float?)image?.Attribute("width") ?? (int)map.Attribute("width")! * (int)map.Attribute("tilewidth")!;
+        float srcHeight = (float?)image?.Attribute("height") ?? (int)map.Attribute("height")! * (int)map.Attribute("tileheight")!;
+        float sx = World.Width / srcWidth;
+        float sy = World.Height / srcHeight;
+
+        foreach (var obj in map.Elements("objectgroup").Elements("object"))
+        {
+            if (obj.Attribute("width") is null || obj.Attribute("height") is null) continue; // points/polygons: not supported
+            walls.Add(new Rectangle(
+                (float)obj.Attribute("x")! * sx,
+                (float)obj.Attribute("y")! * sy,
+                (float)obj.Attribute("width")! * sx,
+                (float)obj.Attribute("height")! * sy));
+        }
+    }
+
+    public static bool Blocks(Rectangle bounds) => walls.Any(w => Raylib.CheckCollisionRecs(w, bounds));
+
+    /// <summary>Debug view of the solid areas, in world space.</summary>
+    public static void Draw()
+    {
+        foreach (var w in walls) Raylib.DrawRectangleLinesEx(w, 2, Color.Red);
+    }
 }
 
 /// <summary>The actual window, in pixels. Only UI (HUD, menus) should position by this.</summary>
@@ -231,12 +280,14 @@ class Game
     double pauseStart;
 
     public bool QuitRequested { get; private set; }
+    bool showCollision; // F1 toggles the wall outlines
 
     // While paused the clock is frozen at the moment the pause began (Resume shifts endTime by the same amount).
     // int SecondsLeft => (int)(endTime - (state == GameState.Paused ? pauseStart : Raylib.GetTime()));
 
     public void Update(float dt)
     {
+        if (Raylib.IsKeyPressed(KeyboardKey.F1)) showCollision = !showCollision;
         switch (state)
         {
             case GameState.Welcome:
@@ -269,6 +320,7 @@ class Game
             demon.Draw();
             popup.Draw();
         }
+        if (showCollision) CollisionMap.Draw();
     }
 
     public void DrawUi()
@@ -466,7 +518,7 @@ class Player
     public float PlayerCurrentHp = PlayerHealth;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
 
-    Vector2 position = World.RandomPoint();
+    Vector2 position = World.RandomPoint() - new Vector2(Size / 2f);
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
@@ -493,7 +545,7 @@ class Player
 
     public void Reset()
     {
-        position = World.RandomPoint();
+        position = World.RandomPoint() - new Vector2(Size / 2f);
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
@@ -530,7 +582,16 @@ class Player
               : boosting ? PlayerState.Running
               : PlayerState.Walking;
 
-        position = Vector2.Clamp(position + move, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
+        // Resolve each axis on its own so a wall only stops the component pushing into it and the player slides along it.
+        TryMove(new Vector2(move.X, 0));
+        TryMove(new Vector2(0, move.Y));
+    }
+
+    void TryMove(Vector2 delta)
+    {
+        if (delta == Vector2.Zero) return;
+        var next = Vector2.Clamp(position + delta, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
+        if (!CollisionMap.Blocks(new Rectangle(next.X, next.Y, Size, Size))) position = next;
     }
 
     void UpdateAttack(float dt)
@@ -707,6 +768,6 @@ class EnemyProjectile(Vector2 from, Vector2 toward)
 
         bool offScreen = position.X < -Radius || position.X > World.Width + Radius
                       || position.Y < -Radius || position.Y > World.Height + Radius;
-        if (offScreen) Active = false;
+        if (offScreen || CollisionMap.Blocks(Bounds)) Active = false;
     }
 }
