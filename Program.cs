@@ -261,7 +261,6 @@ class Game
     // Score is banked when the swing starts; the demon dies when the swing lands (see UpdatePlaying).
     void StartSwing()
     {
-        Console.Write("Swing !!!");
         score += PointsPerHit;
         bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
