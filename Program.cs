@@ -62,6 +62,7 @@ class Game
 
     readonly Player player = new();
     readonly Demon demon = new();
+    readonly ScorePopup popup = new();
 
     static bool AnyInputPressed() =>
     Raylib.GetKeyPressed() != 0
@@ -95,13 +96,14 @@ class Game
             return;
         }
         player.Update(dt);
+        popup.Update(dt);
 
         bool clickedTarget = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(Raylib.GetMousePosition());
         if (!demon.demonState.Equals(DemonState.Dying) && (clickedTarget || demon.Overlaps(player))) OnHit();
 
-        if (demon.Update(dt))
+        if (demon.IsFullyDead(dt))
         {
-            // popup.Show(target.Center);
+            popup.Show(demon.Center);
             demon.Respawn(player);
             endTime = Raylib.GetTime() + PlayTime + bonusTime;
             bonusTime = 0;
@@ -138,7 +140,7 @@ class Game
             case GameState.Playing:
                 player.Draw(dt);
                 demon.Draw(dt);
-                // popup.Draw();
+                popup.Draw();
                 DrawHud();
                 break;
 
@@ -333,7 +335,7 @@ class Demon
             Vector2.Zero, 0, Color.White);
     }
 
-    public bool Update(float dt)
+    public bool IsFullyDead(float dt)
     {
         if (demonState.Equals(DemonState.Dying))
         {
@@ -354,5 +356,50 @@ class Demon
             }
         }
         return false;
+    }
+}
+
+class ScorePopup
+{
+    const float ScaleTime = 0.15f;
+    const float HoldTime = 0.5f;
+    const float FadeTime = 0.3f;
+    const float DriftSpeed = 20f; // pixels per second
+    const int FontSize = 24;
+    const string Text = "+10";
+
+    bool active;
+    Vector2 origin;
+    float elapsed;
+
+    public void Show(Vector2 at)
+    {
+        active = true;
+        origin = at;
+        elapsed = 0;
+    }
+
+    public void Update(float dt)
+    {
+        if (!active) return;
+        elapsed += dt;
+        if (elapsed >= ScaleTime + HoldTime + FadeTime) active = false;
+    }
+
+    public void Draw()
+    {
+        if (!active) return;
+
+        float scale = elapsed < ScaleTime ? elapsed / ScaleTime : 1;
+        float alpha = elapsed < ScaleTime + HoldTime ? 1 : 1 - (elapsed - ScaleTime - HoldTime) / FadeTime;
+
+        int fontSize = Math.Max(1, (int)(FontSize * scale));
+        int width = Raylib.MeasureText(Text, fontSize);
+        float drift = elapsed * DriftSpeed;
+        Raylib.DrawText(Text,
+            (int)(origin.X - width / 2f),
+            (int)(origin.Y - fontSize / 2f - drift),
+            fontSize,
+            Raylib.Fade(Color.Green, alpha));
     }
 }
