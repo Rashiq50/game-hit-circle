@@ -6,6 +6,7 @@ const int screenHeight = 600;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(screenWidth, screenHeight, "Hit them all!");
 Raylib.SetTargetFPS(60);
+Texture2D background = Raylib.LoadTexture("bg.png");
 // circle values
 float centerX = 0;
 float centerY = 0;
@@ -122,6 +123,11 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
     int currentScreenHeight = Raylib.GetScreenHeight();
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
+    // stretch the background image to fill the (resizable) window
+    Raylib.DrawTexturePro(background,
+        new Rectangle(0, 0, background.Width, background.Height),
+        new Rectangle(0, 0, currentScreenWidth, currentScreenHeight),
+        Vector2.Zero, 0, Color.White);
 
     // Welcome screen handle & text
     if (!hasStarted && !isPlaying)
@@ -285,4 +291,5 @@ while (!Raylib.WindowShouldClose() && !shouldQuit)
     Raylib.EndDrawing();
 }
 
+Raylib.UnloadTexture(background);
 Raylib.CloseWindow();
