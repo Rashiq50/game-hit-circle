@@ -31,6 +31,7 @@ bool isPlaying = false;
 double endTimer = 0;
 const int playTime = 5;
 int bonusTime = 0;
+bool shouldQuit = false;
 
 // score popup values
 bool popupActive = false;
@@ -86,7 +87,7 @@ void startGame()
     setNewCircle();
 }
 
-while (!Raylib.WindowShouldClose())
+while (!Raylib.WindowShouldClose() && !shouldQuit)
 {
     Vector2 mousePoint = Raylib.GetMousePosition();
     float dt = Raylib.GetFrameTime();
@@ -116,10 +117,18 @@ while (!Raylib.WindowShouldClose())
     if (!hasStarted && (anyKey || anyMouse)) startGame();
 
     // Game over handle & text
-    if (Raylib.GetTime() > endTimer && hasStarted)
+    if (isPlaying && Raylib.GetTime() > endTimer)
     {
         isPlaying = false;
         endTimer = 0;
+    }
+    if (hasStarted && !isPlaying)
+    {
+        if (Raylib.IsKeyPressed(KeyboardKey.R)) startGame();
+        if (Raylib.IsKeyPressed(KeyboardKey.Q)) shouldQuit = true;
+    }
+    if (hasStarted && !isPlaying)
+    {
         const string gameOverText = "Game Over!";
         int fontSize = 62;
         int textSize = Raylib.MeasureText(gameOverText, fontSize);
@@ -133,11 +142,6 @@ while (!Raylib.WindowShouldClose())
         int quitSize = Raylib.MeasureText(quitText, optionFontSize);
         Raylib.DrawText(replayText, currentScreenWidth / 2 - replaySize / 2, optionY, optionFontSize, Color.Gray);
         Raylib.DrawText(quitText, currentScreenWidth / 2 - quitSize / 2, optionY + optionFontSize + 10, optionFontSize, Color.Gray);
-    }
-    if (!isPlaying && hasStarted)
-    {
-        if (Raylib.IsKeyDown(KeyboardKey.R)) startGame();
-        if (Raylib.IsKeyDown(KeyboardKey.Q)) Raylib.CloseWindow();
     }
 
     // Main game
