@@ -233,7 +233,7 @@ class Game
                 break;
 
             case GameState.MainMenu:
-                bg = Assets.MainMenuBackground;
+                bg = Assets.WelcomBackground;
                 break;
 
             case GameState.Playing:
@@ -281,7 +281,7 @@ class Game
 
     void DrawMainMenu()
     {
-        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack2);
         mainMenu.Draw();
     }
 

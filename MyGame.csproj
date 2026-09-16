@@ -20,10 +20,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="tile.png" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="assets\dungeon.tmx" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="textures\**" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="sounds\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="tile.png" CopyToOutputDirectory="Always" />
+    <None Include="assets\dungeon.tmx" CopyToOutputDirectory="Always" />
+    <None Include="textures\**" CopyToOutputDirectory="Always" />
+    <None Include="sounds\**" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
   <ItemGroup>

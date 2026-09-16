@@ -12,6 +12,7 @@ static class Assets
     public static Sound SwordSound, ScoreSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
+    public static Color OverlayBlack2 = new Color(0, 0, 0, 100);
     // one strip per facing direction, indexed by (int)Direction
     public static SpriteStrip[] HeroIdle = [], HeroWalk = [], HeroRun = [], HeroAxe = [];
 
