@@ -223,8 +223,6 @@ class Game
     void DrawMainMenu()
     {
         bool isContinue = checkpoint.Score > 0;
-        // Continue if save file has progress, new game otherwise
-        // 3 options: [N] New Game, [C] Continue, [Q] Quit
         const int optionFontSize = 28;
         int optionY = Screen.Height / 2;
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
