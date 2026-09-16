@@ -63,6 +63,13 @@ class Player
         animElapsed = 0;
     }
 
+    public void Ultimate()
+    {
+        state = PlayerState.Attacking;
+        PlayerUlti = 0;
+        animElapsed = 0;
+    }
+
     public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
     public void ReceivePower(float amout) => PlayerUlti = Math.Min(100, PlayerUlti + amout);
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);

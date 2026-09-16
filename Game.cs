@@ -164,8 +164,14 @@ class Game
         player.Update(dt);
         popup.Update(dt);
 
-        bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
-        if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing(demon);
+        if (player.PlayerUlti == 100)
+        {
+            bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
+            if (demon.IsAlive && !player.IsAttacking && clickedDemon) StartUltimate(demon);
+        }
+
+
+        if (demon.IsAlive && !player.IsAttacking && demon.Overlaps(player)) StartSwing(demon);
         if (demon.IsAlive && player.SwingLanded)
         {
             demon.Kill(player);
@@ -198,6 +204,15 @@ class Game
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
         player.Attack();
+    }
+
+    void StartUltimate(Demon demon)
+    {
+        score += demon.ScorePoint;
+        // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
+        Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
+        Raylib.PlaySound(Assets.SwordSound);
+        player.Ultimate();
     }
 
     static bool AnyInputPressed() =>
