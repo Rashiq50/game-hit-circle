@@ -1,14 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>HitThemAll</AssemblyName>
+    <RootNamespace>HitThemAll</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Publish settings: `dotnet publish -c Release` produces one self-contained exe (no .NET install needed). -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed> <!-- SaveData uses reflection-based System.Text.Json -->
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="bg2.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="tile.png" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="assets\dungeon.tmx" CopyToOutputDirectory="PreserveNewest" />
     <None Include="textures\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="sounds\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

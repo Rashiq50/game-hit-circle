@@ -1,6 +1,9 @@
 using System.Numerics;
 using Raylib_cs;
 
+// Asset paths are relative, so run from the exe folder no matter how the game was launched (shortcut, double-click, etc.).
+Environment.CurrentDirectory = AppContext.BaseDirectory;
+
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
 Raylib.InitWindow(1000, 600, "Hit them all!");
 Raylib.InitAudioDevice();
