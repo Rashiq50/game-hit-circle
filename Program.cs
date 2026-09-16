@@ -32,7 +32,7 @@ Raylib.CloseAudioDevice();
 Raylib.CloseWindow();
 
 enum Direction { Down, Up, Left, Right }
-enum GameState { Welcome, Playing, Paused, GameOver }
+enum GameState { Welcome, MainMenu, Playing, Paused, GameOver }
 enum PlayerState { Idle, Walking, Running, Attacking, Dead }
 enum DemonState { Idle, Dying, Attacking }
 
@@ -65,7 +65,7 @@ static class Assets
     public static SpriteStrip DemonIdle, DemonDeath;
     public static Sound SwordSound, ScoreSound, GameOver;
 
-    public static Color OverlayBlack = new Color(0, 0, 0, 150);
+    public static Color OverlayBlack = new Color(0, 0, 0, 200);
     // one strip per facing direction, indexed by (int)Direction
     public static SpriteStrip[] HeroIdle = [], HeroWalk = [], HeroRun = [], HeroAxe = [];
 
@@ -291,7 +291,12 @@ class Game
         switch (state)
         {
             case GameState.Welcome:
-                if (AnyInputPressed()) StartRound();
+                if (AnyInputPressed()) GoToMainMenu();
+                break;
+
+            case GameState.MainMenu:
+                if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
+                if (Raylib.IsKeyPressed(KeyboardKey.N)) StartRound();
                 break;
 
             case GameState.Playing:
@@ -331,6 +336,10 @@ class Game
                 DrawWelcome();
                 break;
 
+            case GameState.MainMenu:
+                DrawMainMenu();
+                break;
+
             case GameState.Playing:
                 DrawHud();
                 break;
@@ -357,6 +366,11 @@ class Game
         player.Reset();
         demon.ClearProjectiles();
         demon.Respawn(player);
+    }
+
+    void GoToMainMenu()
+    {
+        state = GameState.MainMenu;
     }
 
     // The round timer is wall-clock based, so the time spent paused is added back on resume.
@@ -453,6 +467,21 @@ class Game
         const int titleFontSize = 80;
         Screen.DrawCenteredText("Hit them all!", Screen.Height / 2 - titleFontSize - 20, titleFontSize, Color.Beige);
         Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 + 20, 32, Color.Gray);
+    }
+
+    static void DrawMainMenu()
+    {
+        // Continue if save file has progress, new game otherwise
+        // 3 options: [N] New Game, [C] Continue, [Q] Quit
+        const int optionFontSize = 28;
+        int optionY = Screen.Height / 2;
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
+        Screen.DrawCenteredText("[N] New Game", optionY, optionFontSize, Color.Gray);
+        if (false)
+        {
+            Screen.DrawCenteredText("[C] Continue", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+        }
+        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
 
     static void DrawGameOver()
@@ -735,12 +764,11 @@ class ScorePopup
     }
 }
 
-/// <summary>A single shot fired by a demon: flies in a straight line toward where the player was until it leaves the world or hits.</summary>
 class EnemyProjectile(Vector2 from, Vector2 toward)
 {
     const float Speed = 400f;
     const float Radius = 15f;
-    const float DrawSize = 34f; // the glow extends past the hit box
+    const float DrawSize = 34f;
 
     Vector2 position = from;
     readonly Vector2 direction = Vector2.Normalize(toward - from);
