@@ -160,6 +160,7 @@ class Game
     void UpdatePlaying(float dt)
     {
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
+        CameraFocus.Update(dt);
         if (player.PlayerCurrentHp <= 0)
         {
             EndRound();

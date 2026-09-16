@@ -10,12 +10,13 @@ class Player
     const float AnimFps = 10f;
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3;
+    private static readonly bool GodMode = false;
     private bool IsUltimate = false;
     private int UltimateKills = 0;
     private int UltimateKillLimit = 1;
     static readonly float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
-    public float PlayerUlti = 0;
+    public float PlayerUlti = GodMode ? 100 : 0;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
@@ -79,11 +80,14 @@ class Player
     {
         IsUltimate = true;
         TeleportToEntity(at);
-        PlayerUlti = 0; // ! CHANGE TO ZERO AFTER TEST
+        if (!GodMode)
+        {
+            PlayerUlti = 0;
+        }
         Attack();
     }
 
-    public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
+    public void ReceiveDamage(float damage) => PlayerCurrentHp = !GodMode ? Math.Max(0, PlayerCurrentHp - damage) : 100;
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
