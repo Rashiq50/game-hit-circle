@@ -34,7 +34,14 @@ class Demon
     {
         state = DemonState.Dying;
         animElapsed = 0;
-        player.ReceivePower(PowerDrop);
+        if (!player.IsUsingUltimate)
+        {
+            player.ReceivePower(PowerDrop);
+        }
+        else
+        {
+            player.AddUltimateKill();
+        }
     }
 
     public void Respawn(Player player)

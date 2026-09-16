@@ -7,9 +7,9 @@ static class Assets
     const int HeroFrameSize = 80;
     const int DemonFrameSize = 256;
 
-    public static Texture2D Background, Fireball;
+    public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
     public static SpriteStrip DemonIdle, DemonDeath;
-    public static Sound SwordSound, ScoreSound, GameOver;
+    public static Sound SwordSound, ScoreSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
     // one strip per facing direction, indexed by (int)Direction
@@ -18,6 +18,8 @@ static class Assets
     public static void Load()
     {
         Background = Raylib.LoadTexture("tile.png");
+        WelcomBackground = Raylib.LoadTexture("textures/welcome.png");
+        MainMenuBackground = Raylib.LoadTexture("textures/mainmenu.png");
         Fireball = Raylib.LoadTexture("textures/fireball.png");
         DemonIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), DemonFrameSize);
         DemonDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), DemonFrameSize);
@@ -32,6 +34,8 @@ static class Assets
     public static void Unload()
     {
         Raylib.UnloadTexture(Background);
+        Raylib.UnloadTexture(WelcomBackground);
+        Raylib.UnloadTexture(MainMenuBackground);
         Raylib.UnloadTexture(Fireball);
         Raylib.UnloadTexture(DemonIdle.Texture);
         Raylib.UnloadTexture(DemonDeath.Texture);

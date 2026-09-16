@@ -36,7 +36,7 @@ class Game
         switch (state)
         {
             case GameState.Welcome:
-                if (AnyInputPressed()) GoToMainMenu();
+                if (AnyInputPressed()) GoToMainMenu(false);
                 break;
 
             case GameState.MainMenu:
@@ -52,6 +52,7 @@ class Game
 
             case GameState.Paused:
                 if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.R)) Resume();
+                if (Raylib.IsKeyPressed(KeyboardKey.M)) GoToMainMenu(true);
                 if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
                 break;
 
@@ -124,9 +125,14 @@ class Game
         demon.Respawn(player);
     }
 
-    void GoToMainMenu()
+    void GoToMainMenu(bool shouldSave)
     {
         state = GameState.MainMenu;
+        if (shouldSave)
+        {
+            highScore = Math.Max(highScore, score);
+            SaveProgress();
+        }
     }
 
     void Pause()
@@ -202,17 +208,14 @@ class Game
     {
         score += demon.ScorePoint;
         // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
-        Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
-        Raylib.PlaySound(Assets.SwordSound);
         player.Attack();
     }
 
     void StartUltimate(Demon demon)
     {
         score += demon.ScorePoint;
-        // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
-        Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
-        Raylib.PlaySound(Assets.SwordSound);
+        // Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
+        // Raylib.PlaySound(Assets.SwordSound);
         player.Ultimate(demon.Center);
     }
 
@@ -222,18 +225,41 @@ class Game
         || Raylib.IsMouseButtonPressed(MouseButton.Right)
         || Raylib.IsMouseButtonPressed(MouseButton.Middle);
 
-    static void DrawBackground()
+    void DrawBackground()
     {
-        var bg = Assets.Background;
+        var bg = Assets.WelcomBackground;
+        switch (state)
+        {
+            case GameState.Welcome:
+                bg = Assets.WelcomBackground;
+                break;
+
+            case GameState.MainMenu:
+                bg = Assets.MainMenuBackground;
+                break;
+
+            case GameState.Playing:
+                bg = Assets.Background;
+                break;
+
+            case GameState.Paused:
+                bg = Assets.Background;
+                break;
+
+            case GameState.GameOver:
+                bg = Assets.Background;
+                break;
+        }
         Raylib.DrawTexturePro(bg,
-            new Rectangle(0, 0, bg.Width, bg.Height),
-            new Rectangle(0, 0, World.Width, World.Height),
-            Vector2.Zero, 0, Color.White);
+    new Rectangle(0, 0, bg.Width, bg.Height),
+    new Rectangle(0, 0, World.Width, World.Height),
+    Vector2.Zero, 0, Color.White);
     }
 
     static void DrawWelcome()
     {
         const int titleFontSize = 80;
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
         Screen.DrawCenteredText("Hit them all!", Screen.Height / 2 - titleFontSize - 20, titleFontSize, Color.Beige);
         Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 + 20, 32, Color.Gray);
     }
@@ -242,7 +268,7 @@ class Game
     {
         bool isContinue = checkpoint.Score > 0;
         const int optionFontSize = 28;
-        int optionY = Screen.Height / 2;
+        int optionY = (Screen.Height / 2) - optionFontSize;
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
         Screen.DrawCenteredText("[N] New Game", optionY, optionFontSize, Color.Gray);
         if (isContinue)
@@ -271,7 +297,7 @@ class Game
         int h = (int)(Screen.Height * coverage);
         int optionY = Screen.Height / 2 - optionFontSize - 5;
 
-        Raylib.DrawRectangle((Screen.Width - w) / 2, (Screen.Height - h) / 2, w, h, Color.Black);
+        // Raylib.DrawRectangle((Screen.Width - w) / 2, (Screen.Height - h) / 2, w, h, Color.Black);
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
         Screen.DrawCenteredText("[Esc]/[R] Resume", optionY, optionFontSize, Color.Gray);
         Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);

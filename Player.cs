@@ -11,7 +11,9 @@ class Player
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3;
     private bool IsUltimate = false;
-    static float PlayerHealth = 100;
+    private int UltimateKills = 0;
+    private int UltimateKillLimit = 1;
+    static readonly float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
     public float PlayerUlti = 0;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
@@ -23,6 +25,7 @@ class Player
     float animElapsed;
     public Rectangle Bounds => new(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
+    public bool IsUsingUltimate => IsUltimate;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
     public bool SwingLanded { get; private set; }
 
@@ -42,12 +45,18 @@ class Player
         ? Strip.OneShotFrame(animElapsed, AttackDuration)
         : Strip.LoopFrame(animElapsed, AnimFps);
 
+    public void AddUltimateKill()
+    {
+        UltimateKills += 1;
+    }
+
     public void Reset()
     {
         position = World.RandomPoint() - new Vector2(Size / 2f);
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
+        UltimateKills = 0;
     }
     public void Resume(float health, float ulti)
     {
@@ -60,7 +69,8 @@ class Player
 
     public void Attack()
     {
-        IsUltimate = false;
+        Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
+        Raylib.PlaySound(Assets.SwordSound);
         state = PlayerState.Attacking;
         animElapsed = 0;
     }
@@ -69,9 +79,8 @@ class Player
     {
         IsUltimate = true;
         TeleportToEntity(at);
-        state = PlayerState.Attacking;
         PlayerUlti = 0; // ! CHANGE TO ZERO AFTER TEST
-        animElapsed = 0;
+        Attack();
     }
 
     public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
@@ -118,6 +127,11 @@ class Player
         int frameBefore = CurrentFrame;
         animElapsed += dt;
         SwingLanded = frameBefore < AttackImpactFrame && CurrentFrame >= AttackImpactFrame;
+        if (SwingLanded && UltimateKills >= UltimateKillLimit)
+        {
+            IsUltimate = false;
+            UltimateKills = 0;
+        }
         if (animElapsed >= AttackDuration) state = PlayerState.Idle;
     }
 
