@@ -477,6 +477,7 @@ class Game
         int optionY = Screen.Height / 2;
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
         Screen.DrawCenteredText("[N] New Game", optionY, optionFontSize, Color.Gray);
+        // ignore for now
         if (false)
         {
             Screen.DrawCenteredText("[C] Continue", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
