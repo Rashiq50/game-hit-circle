@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Raylib_cs;
 
 // Asset paths are relative, so run from the exe folder no matter how the game was launched (shortcut, double-click, etc.).
