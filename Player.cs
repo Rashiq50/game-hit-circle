@@ -10,6 +10,7 @@ class Player
     const float AnimFps = 10f;
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3;
+    private bool IsUltimate = false;
     static float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
     public float PlayerUlti = 0;
@@ -59,19 +60,22 @@ class Player
 
     public void Attack()
     {
+        IsUltimate = false;
         state = PlayerState.Attacking;
         animElapsed = 0;
     }
 
-    public void Ultimate()
+    public void Ultimate(Vector2 at)
     {
+        IsUltimate = true;
+        TeleportToEntity(at);
         state = PlayerState.Attacking;
-        PlayerUlti = 0;
+        PlayerUlti = 0; // ! CHANGE TO ZERO AFTER TEST
         animElapsed = 0;
     }
 
     public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
-    public void ReceivePower(float amout) => PlayerUlti = Math.Min(100, PlayerUlti + amout);
+    public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
     public void Update(float dt)
@@ -115,6 +119,22 @@ class Player
         animElapsed += dt;
         SwingLanded = frameBefore < AttackImpactFrame && CurrentFrame >= AttackImpactFrame;
         if (animElapsed >= AttackDuration) state = PlayerState.Idle;
+    }
+
+    void TeleportToEntity(Vector2 at)
+    {
+        Vector2[] candidates = [new Vector2(at.X, at.Y - Size), new Vector2(at.X, at.Y + Size), new Vector2(at.X - Size, at.Y), new Vector2(at.X + Size, at.Y)];
+        // List<int> unblockedPoints = new List<int>{};
+        // TODO: later play with teleport direction etc
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (!CollisionMap.Blocks(new Rectangle(candidates[i].X, candidates[i].Y, Size, Size)))
+            {
+                Console.WriteLine($"at: {at}  going: {candidates[i]}");
+                position = candidates[i];
+                break;
+            }
+        }
     }
 
     public void Draw() => Strip.Draw(CurrentFrame, Center, DrawSize);

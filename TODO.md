@@ -6,3 +6,4 @@ ADD:
 2. Some small randomness to firing (not always 2s gap)
 3. when player is hit show more feedback. 
 4. ~~Main menu~~
+5. On Ultimate: Try with Camera effects such as pan-zoom

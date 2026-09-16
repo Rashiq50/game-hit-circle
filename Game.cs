@@ -148,6 +148,7 @@ class Game
 
     void SaveProgress()
     {
+        // return;
         checkpoint = checkpoint with { HighScore = highScore, Score = score, PlayerHp = player.PlayerCurrentHp, PlayerUlti = player.PlayerUlti };
         SaveFile.Save(checkpoint);
     }
@@ -212,7 +213,7 @@ class Game
         // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
-        player.Ultimate();
+        player.Ultimate(demon.Center);
     }
 
     static bool AnyInputPressed() =>
