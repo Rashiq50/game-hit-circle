@@ -27,8 +27,7 @@ class Game
     public bool QuitRequested { get; private set; }
     bool showCollision; // F1 toggles the wall outlines
 
-    // While paused the clock is frozen at the moment the pause began (Resume shifts endTime by the same amount).
-    // int SecondsLeft => (int)(endTime - (state == GameState.Paused ? pauseStart : Raylib.GetTime()));
+    public Game() => BuildMenus();
 
     public void Update(float dt)
     {
@@ -40,9 +39,7 @@ class Game
                 break;
 
             case GameState.MainMenu:
-                if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
-                if (Raylib.IsKeyPressed(KeyboardKey.N)) StartRound();
-                if (Raylib.IsKeyPressed(KeyboardKey.C) && checkpoint.Score > 0) ContinueRound();
+                mainMenu.Update();
                 break;
 
             case GameState.Playing:
@@ -51,9 +48,8 @@ class Game
                 break;
 
             case GameState.Paused:
-                if (Raylib.IsKeyPressed(KeyboardKey.Escape) || Raylib.IsKeyPressed(KeyboardKey.R)) Resume();
-                if (Raylib.IsKeyPressed(KeyboardKey.M)) GoToMainMenu(true);
-                if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
+                if (Raylib.IsKeyPressed(KeyboardKey.Escape)) Resume(); // Esc toggles pause; it's not a listed option
+                else pauseMenu.Update();
                 break;
 
             case GameState.GameOver:
@@ -92,8 +88,7 @@ class Game
                 break;
 
             case GameState.Paused:
-                DrawHud();
-                DrawPauseOverlay();
+                DrawPauseOverlay(); // no HUD: the bars in the bottom-left would sit under the menu
                 break;
 
             case GameState.GameOver:
@@ -133,11 +128,13 @@ class Game
             highScore = Math.Max(highScore, score);
             SaveProgress();
         }
+        mainMenu.Reset(KeyboardKey.C); // start on Continue when there's a save, else the first option
     }
 
     void Pause()
     {
         state = GameState.Paused;
+        pauseMenu.Reset();
     }
 
     void Resume()
@@ -264,18 +261,27 @@ class Game
         Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 + 20, 32, Color.Gray);
     }
 
+    bool CanContinue => checkpoint.Score > 0;
+
+    CursorMenu mainMenu = null!; // built in the constructor: the items call back into this instance
+    CursorMenu pauseMenu = null!;
+
+    void BuildMenus()
+    {
+        mainMenu = new CursorMenu(
+            new(KeyboardKey.N, "[N] New Game", StartRound),
+            new(KeyboardKey.C, "[C] Continue", ContinueRound, () => CanContinue),
+            new(KeyboardKey.Q, "[Q] Quit", () => QuitRequested = true));
+        pauseMenu = new CursorMenu(
+            new(KeyboardKey.R, "[R] Resume", Resume),
+            new(KeyboardKey.M, "[M] Main Menu", () => GoToMainMenu(true)),
+            new(KeyboardKey.Q, "[Q] Quit", () => QuitRequested = true));
+    }
+
     void DrawMainMenu()
     {
-        bool isContinue = checkpoint.Score > 0;
-        const int optionFontSize = 28;
-        int optionY = (Screen.Height / 2) - optionFontSize;
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
-        Screen.DrawCenteredText("[N] New Game", optionY, optionFontSize, Color.Gray);
-        if (isContinue)
-        {
-            Screen.DrawCenteredText("[C] Continue", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
-        }
-        Screen.DrawCenteredText("[Q] Quit", optionY + ((isContinue ? 2 : 1) * optionFontSize) + 20, optionFontSize, Color.Gray);
+        mainMenu.Draw();
     }
 
     static void DrawGameOver()
@@ -289,18 +295,10 @@ class Game
         Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
     }
 
-    static void DrawPauseOverlay()
+    void DrawPauseOverlay()
     {
-        const float coverage = 0.8f;
-        const int optionFontSize = 28;
-        int w = (int)(Screen.Width * coverage);
-        int h = (int)(Screen.Height * coverage);
-        int optionY = Screen.Height / 2 - optionFontSize - 5;
-
-        // Raylib.DrawRectangle((Screen.Width - w) / 2, (Screen.Height - h) / 2, w, h, Color.Black);
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
-        Screen.DrawCenteredText("[Esc]/[R] Resume", optionY, optionFontSize, Color.Gray);
-        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+        pauseMenu.Draw();
     }
 
     void DrawHud()
