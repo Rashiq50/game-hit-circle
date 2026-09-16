@@ -12,7 +12,9 @@ class Player
     const int AttackImpactFrame = 3;
     static float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
+    public float PlayerUlti = 0;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
+    public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
     Vector2 position = World.RandomPoint() - new Vector2(Size / 2f);
     PlayerState state = PlayerState.Idle;
@@ -46,11 +48,12 @@ class Player
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
     }
-    public void Resume(float health)
+    public void Resume(float health, float ulti)
     {
         position = World.RandomPoint() - new Vector2(Size / 2f);
         state = PlayerState.Idle;
         PlayerCurrentHp = health;
+        PlayerUlti = ulti;
         animElapsed = 0;
     }
 
@@ -61,6 +64,8 @@ class Player
     }
 
     public void ReceiveDamage(float damage) => PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
+    public void ReceivePower(float amout) => PlayerUlti = Math.Min(100, PlayerUlti + amout);
+    public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
     public void Update(float dt)
     {

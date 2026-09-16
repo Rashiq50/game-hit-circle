@@ -9,6 +9,8 @@ class Demon
     const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
     const float FireInterval = 2f; // seconds between shots while alive
+    const float PowerDrop = 25;
+    const int PointDrop = 10;
 
     public Vector2 Center;
     DemonState state = DemonState.Idle;
@@ -26,11 +28,13 @@ class Demon
 
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
     public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
+    public int ScorePoint => PointDrop;
 
-    public void Kill()
+    public void Kill(Player player)
     {
         state = DemonState.Dying;
         animElapsed = 0;
+        player.ReceivePower(PowerDrop);
     }
 
     public void Respawn(Player player)

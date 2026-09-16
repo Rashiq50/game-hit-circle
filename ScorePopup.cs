@@ -9,17 +9,18 @@ class ScorePopup
     const float Duration = ScaleTime + HoldTime + FadeTime;
     const float DriftSpeed = 20f; // pixels per second
     const int FontSize = 24;
-    const string Text = "+10";
+    float point = 0;
 
     bool active;
     Vector2 origin;
     float elapsed;
 
-    public void Show(Vector2 at)
+    public void Show(Vector2 at, float pt)
     {
         active = true;
         origin = at;
         elapsed = 0;
+        point = pt;
     }
 
     public void Update(float dt)
@@ -35,11 +36,12 @@ class ScorePopup
 
         float scale = elapsed < ScaleTime ? elapsed / ScaleTime : 1;
         float alpha = elapsed < ScaleTime + HoldTime ? 1 : 1 - (elapsed - ScaleTime - HoldTime) / FadeTime;
+        string text = $"+{point:0.##}";
 
         int fontSize = Math.Max(1, (int)(FontSize * scale));
-        int width = Raylib.MeasureText(Text, fontSize);
+        int width = Raylib.MeasureText(text, fontSize);
         float drift = elapsed * DriftSpeed;
-        Raylib.DrawText(Text,
+        Raylib.DrawText(text,
             (int)(origin.X - width / 2f),
             (int)(origin.Y - fontSize / 2f - drift),
             fontSize,

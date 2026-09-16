@@ -1,7 +1,7 @@
 using System.Text.Json;
 
 /// <summary>Everything that survives between launches. Stage/Score are the checkpoint the next run starts from; HighScore is lifetime.</summary>
-record SaveData(int Stage = 1, int Score = 0, int HighScore = 0, float playerHp = 100)
+record SaveData(int Stage = 1, int Score = 0, int HighScore = 0, float PlayerHp = 100, float PlayerUlti = 0)
 {
     public static readonly SaveData Fresh = new();
     public bool HasProgress => Stage > 1 || Score > 0;

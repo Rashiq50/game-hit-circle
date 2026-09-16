@@ -3,8 +3,6 @@ using Raylib_cs;
 
 class Game
 {
-    const int PointsPerHit = 10;
-    private readonly int DAMAGE_BY_PROJECTILE = 12;
     const float ShakeDuration = 0.1f;
     const float ShakeStrength = 6f; // pixels
     float shakeTimeLeft;
@@ -121,7 +119,7 @@ class Game
         stage = checkpoint.Stage;
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
-        player.Resume(checkpoint.playerHp);
+        player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
         demon.ClearProjectiles();
         demon.Respawn(player);
     }
@@ -150,7 +148,7 @@ class Game
 
     void SaveProgress()
     {
-        checkpoint = checkpoint with { HighScore = highScore, Score = score, playerHp = player.PlayerCurrentHp };
+        checkpoint = checkpoint with { HighScore = highScore, Score = score, PlayerHp = player.PlayerCurrentHp, PlayerUlti = player.PlayerUlti };
         SaveFile.Save(checkpoint);
     }
 
@@ -167,8 +165,13 @@ class Game
         popup.Update(dt);
 
         bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
-        if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing();
-        if (demon.IsAlive && player.SwingLanded) demon.Kill();
+        if (demon.IsAlive && !player.IsAttacking && (clickedDemon || demon.Overlaps(player))) StartSwing(demon);
+        if (demon.IsAlive && player.SwingLanded)
+        {
+            demon.Kill(player);
+            SaveProgress();
+
+        }
 
         demon.Update(dt, player);
         if (demon.ConsumeProjectileHit(player))
@@ -180,7 +183,7 @@ class Game
         {
             Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
             Raylib.PlaySound(Assets.ScoreSound);
-            popup.Show(demon.Center);
+            popup.Show(demon.Center, demon.ScorePoint);
             demon.Respawn(player);
             // endTime = Raylib.GetTime() + PlayTime + bonusTime;
             // bonusTime = 0;
@@ -188,10 +191,9 @@ class Game
 
     }
 
-    void StartSwing()
+    void StartSwing(Demon demon)
     {
-        score += PointsPerHit;
-        SaveProgress();
+        score += demon.ScorePoint;
         // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
@@ -266,6 +268,7 @@ class Game
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
+        DrawUltimateBar();
     }
 
     void DrawHealthBar()
@@ -279,6 +282,20 @@ class Game
 
         Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
         Raylib.DrawRectangle(x, y, fill, barHeight, Color.Red);
+        Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
+    }
+
+    void DrawUltimateBar()
+    {
+        const int barWidth = 200;
+        const int barHeight = 20;
+        const int margin = 45;
+        int x = 20;
+        int y = Screen.Height - margin - barHeight;
+        int fill = (int)(barWidth * player.PowerFraction);
+
+        Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
+        Raylib.DrawRectangle(x, y, fill, barHeight, Color.Yellow);
         Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
     }
 
