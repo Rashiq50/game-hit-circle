@@ -108,6 +108,7 @@ class Game
         player.Reset();
         demon.ClearProjectiles();
         demon.Respawn(player);
+        CancelUltimateSequence();
     }
 
     void ContinueRound()
@@ -119,6 +120,7 @@ class Game
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
         demon.ClearProjectiles();
         demon.Respawn(player);
+        CancelUltimateSequence();
     }
 
     void GoToMainMenu(bool shouldSave)
@@ -161,6 +163,8 @@ class Game
     {
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
         CameraFocus.Update(dt);
+        UpdateUltimateSequence();
+        bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
         if (player.PlayerCurrentHp <= 0)
         {
             EndRound();
@@ -173,7 +177,7 @@ class Game
         if (player.PlayerUlti == 100)
         {
             bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
-            if (demon.IsAlive && !player.IsAttacking && clickedDemon) StartUltimate(demon);
+            if (demon.IsAlive && !player.IsAttacking && !cinematic && clickedDemon) StartUltimate(demon);
         }
 
 
@@ -185,8 +189,8 @@ class Game
 
         }
 
-        demon.Update(dt, player);
-        if (demon.ConsumeProjectileHit(player))
+        demon.Update(dt, player, holdFire: cinematic);
+        if (!cinematic && demon.ConsumeProjectileHit(player))
         {
             Shake();
         }
@@ -210,12 +214,38 @@ class Game
         player.Attack();
     }
 
+    // The ultimate is a short cinematic: zoom onto the demon, then teleport and swing, then zoom back out.
+    enum UltimatePhase { None, ZoomIn, Attack }
+    UltimatePhase ultimatePhase;
+
     void StartUltimate(Demon demon)
     {
         score += demon.ScorePoint;
         // Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         // Raylib.PlaySound(Assets.SwordSound);
-        player.Ultimate(demon.Center);
+        ultimatePhase = UltimatePhase.ZoomIn;
+        CameraFocus.Focus(demon.Center);
+    }
+
+    void CancelUltimateSequence()
+    {
+        ultimatePhase = UltimatePhase.None;
+        CameraFocus.Release();
+    }
+
+    void UpdateUltimateSequence()
+    {
+        switch (ultimatePhase)
+        {
+            case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
+                player.Ultimate(demon.Center);
+                ultimatePhase = UltimatePhase.Attack;
+                break;
+            case UltimatePhase.Attack when !player.IsAttacking:
+                ultimatePhase = UltimatePhase.None;
+                CameraFocus.Release();
+                break;
+        }
     }
 
     static bool AnyInputPressed() =>

@@ -52,44 +52,35 @@ static class World
 }
 
 /// <summary>
-/// Focus mode: F toggles it on/off; while on, each click zooms the camera onto that spot for <see cref="Duration"/>
-/// seconds and then eases back out to the full view. Toggling it off cancels any focus in progress.
+/// Cinematic camera zoom: <see cref="Focus"/> eases the camera in onto a point and holds there until <see cref="Release"/>,
+/// which eases it back out to the full view. <see cref="World.FitCamera"/> reads <see cref="Amount"/> to blend the two.
 /// </summary>
 static class CameraFocus
 {
-    public const float Duration = 1.5f;
     public const float Zoom = 2f; // multiplier over the fit-to-window zoom
-    const float EaseTime = 0.3f; // seconds spent zooming in at the start and back out at the end
+    const float EaseTime = 0.35f; // seconds to zoom fully in, and again to zoom fully out
 
-    public static bool Enabled { get; private set; }
     public static Vector2 Point { get; private set; }
-    static float timeLeft;
+    static bool holding;
+    static float level; // 0 = full view, 1 = fully zoomed; moves toward the hold state at 1/EaseTime per second
 
-    /// <summary>0 = full view, 1 = fully zoomed onto <see cref="Point"/>; eases in and out at the ends of the focus.</summary>
-    public static float Amount
+    /// <summary>0 = full view, 1 = fully zoomed onto <see cref="Point"/>, smoothed so the camera glides.</summary>
+    public static float Amount => level * level * (3f - 2f * level);
+    /// <summary>True once the zoom-in has finished (or if nothing is being focused).</summary>
+    public static bool IsSettled => level >= 1f || (!holding && level <= 0f);
+
+    public static void Focus(Vector2 point)
     {
-        get
-        {
-            if (timeLeft <= 0) return 0;
-            float elapsed = Duration - timeLeft;
-            float t = Math.Clamp(Math.Min(elapsed, timeLeft) / EaseTime, 0f, 1f);
-            return t * t * (3f - 2f * t); // smoothstep
-        }
+        Point = point;
+        holding = true;
     }
+
+    public static void Release() => holding = false;
 
     public static void Update(float dt)
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.F))
-        {
-            Enabled = !Enabled;
-            timeLeft = 0;
-        }
-        if (Enabled && Raylib.IsMouseButtonPressed(MouseButton.Left))
-        {
-            Point = World.MousePosition();
-            timeLeft = Duration;
-        }
-        timeLeft = Math.Max(0, timeLeft - dt);
+        float step = dt / EaseTime;
+        level = holding ? Math.Min(1f, level + step) : Math.Max(0f, level - step);
     }
 }
 

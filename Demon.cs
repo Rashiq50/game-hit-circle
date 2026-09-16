@@ -58,9 +58,11 @@ class Demon
 
     public void ClearProjectiles() => projectiles.Clear();
 
-    public void Update(float dt, Player player)
+    /// <param name="holdFire">Freezes shooting and any projectiles in flight (animation still plays), e.g. during the player's ultimate.</param>
+    public void Update(float dt, Player player, bool holdFire = false)
     {
         animElapsed += dt;
+        if (holdFire) return;
 
         if (IsAlive)
         {
