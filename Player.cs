@@ -46,6 +46,13 @@ class Player
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
     }
+    public void Resume(float health)
+    {
+        position = World.RandomPoint() - new Vector2(Size / 2f);
+        state = PlayerState.Idle;
+        PlayerCurrentHp = health;
+        animElapsed = 0;
+    }
 
     public void Attack()
     {

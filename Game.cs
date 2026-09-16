@@ -25,9 +25,6 @@ class Game
     int stage;
     int score; // live score for this stage attempt; rolls back to the checkpoint on quit or game over
     int highScore;
-    int bonusTime;
-    // double endTime;
-    double pauseStart;
 
     public bool QuitRequested { get; private set; }
     bool showCollision; // F1 toggles the wall outlines
@@ -47,6 +44,7 @@ class Game
             case GameState.MainMenu:
                 if (Raylib.IsKeyPressed(KeyboardKey.Q)) QuitRequested = true;
                 if (Raylib.IsKeyPressed(KeyboardKey.N)) StartRound();
+                if (Raylib.IsKeyPressed(KeyboardKey.C) && checkpoint.Score > 0) ContinueRound();
                 break;
 
             case GameState.Playing:
@@ -109,11 +107,21 @@ class Game
     void StartRound()
     {
         state = GameState.Playing;
+        stage = 1;
+        score = 0;
+        highScore = checkpoint.HighScore;
+        player.Reset();
+        demon.ClearProjectiles();
+        demon.Respawn(player);
+    }
+
+    void ContinueRound()
+    {
+        state = GameState.Playing;
         stage = checkpoint.Stage;
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
-        bonusTime = 0;
-        player.Reset();
+        player.Resume(checkpoint.playerHp);
         demon.ClearProjectiles();
         demon.Respawn(player);
     }
@@ -123,11 +131,9 @@ class Game
         state = GameState.MainMenu;
     }
 
-    // The round timer is wall-clock based, so the time spent paused is added back on resume.
     void Pause()
     {
         state = GameState.Paused;
-        pauseStart = Raylib.GetTime();
     }
 
     void Resume()
@@ -144,7 +150,7 @@ class Game
 
     void SaveProgress()
     {
-        checkpoint = checkpoint with { HighScore = highScore };
+        checkpoint = checkpoint with { HighScore = highScore, Score = score, playerHp = player.PlayerCurrentHp };
         SaveFile.Save(checkpoint);
     }
 
@@ -185,6 +191,7 @@ class Game
     void StartSwing()
     {
         score += PointsPerHit;
+        SaveProgress();
         // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
@@ -213,20 +220,20 @@ class Game
         Screen.DrawCenteredText("Press any key to continue", Screen.Height / 2 + 20, 32, Color.Gray);
     }
 
-    static void DrawMainMenu()
+    void DrawMainMenu()
     {
+        bool isContinue = checkpoint.Score > 0;
         // Continue if save file has progress, new game otherwise
         // 3 options: [N] New Game, [C] Continue, [Q] Quit
         const int optionFontSize = 28;
         int optionY = Screen.Height / 2;
         Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
         Screen.DrawCenteredText("[N] New Game", optionY, optionFontSize, Color.Gray);
-        // ignore for now
-        if (false)
+        if (isContinue)
         {
             Screen.DrawCenteredText("[C] Continue", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
         }
-        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+        Screen.DrawCenteredText("[Q] Quit", optionY + ((isContinue ? 2 : 1) * optionFontSize) + 20, optionFontSize, Color.Gray);
     }
 
     static void DrawGameOver()
