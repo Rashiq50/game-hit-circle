@@ -25,6 +25,7 @@ class Game
     int highScore;
 
     public bool QuitRequested { get; private set; }
+    public bool BlurWorld => state == GameState.Paused; // the pause menu sits over a blurred snapshot of the action
     bool showCollision; // F1 toggles the wall outlines
 
     public Game() => BuildMenus();
