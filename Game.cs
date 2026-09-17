@@ -57,8 +57,7 @@ class Game
                 break;
 
             case GameState.GameOver:
-                if (Raylib.IsKeyDown(KeyboardKey.R)) StartRound();
-                if (Raylib.IsKeyDown(KeyboardKey.Q)) QuitRequested = true;
+                gameOverMenu.Update();
                 break;
         }
     }
@@ -112,13 +111,6 @@ class Game
         score = 0;
         highScore = checkpoint.HighScore;
         player.Reset();
-        if (demons.Count < MaxEnemies)
-        {
-            Demon demon = new Demon();
-            demons.Add(demon);
-            demon.ClearProjectiles();
-            demon.Respawn(player);
-        }
         CancelUltimateSequence();
     }
 
@@ -129,14 +121,18 @@ class Game
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
-        if (demons.Count <= MaxEnemies)
+        CancelUltimateSequence();
+    }
+
+    void SpawnEnemies()
+    {
+        if (demons.Count < MaxEnemies)
         {
             Demon demon = new Demon();
             demons.Add(demon);
             demon.ClearProjectiles();
             demon.Respawn(player);
         }
-        CancelUltimateSequence();
     }
 
     void GoToMainMenu(bool shouldSave)
@@ -165,7 +161,7 @@ class Game
     {
         state = GameState.GameOver;
         highScore = Math.Max(highScore, score);
-        SaveProgress();
+        gameOverMenu.Reset();
     }
 
     void SaveProgress()
@@ -189,13 +185,7 @@ class Game
 
         player.Update(dt);
         popup.Update(dt);
-
-        if (demons.Count < MaxEnemies)
-        {
-            Demon newDemon = new Demon();
-            demons.Add(newDemon);
-            newDemon.Respawn(player);
-        }
+        SpawnEnemies();
 
         var demon = demons.Find(d => d.Overlaps(player));
         Demon? clickedDemon()
@@ -349,6 +339,7 @@ class Game
 
     CursorMenu mainMenu = null!; // built in the constructor: the items call back into this instance
     CursorMenu pauseMenu = null!;
+    CursorMenu gameOverMenu = null!;
 
     void BuildMenus()
     {
@@ -360,6 +351,10 @@ class Game
             new(KeyboardKey.R, "[R] Resume", Resume),
             new(KeyboardKey.M, "[M] Main Menu", () => GoToMainMenu(true)),
             new(KeyboardKey.Q, "[Q] Quit", () => QuitRequested = true));
+        gameOverMenu = new CursorMenu(
+            new(KeyboardKey.R, "[R] Replay", StartRound),
+            new(KeyboardKey.M, "[M] Main Menu", () => GoToMainMenu(false)), // EndRound already saved
+            new(KeyboardKey.Q, "[Q] Quit", () => QuitRequested = true));
     }
 
     void DrawMainMenu()
@@ -368,15 +363,12 @@ class Game
         mainMenu.Draw();
     }
 
-    static void DrawGameOver()
+    void DrawGameOver()
     {
         const int titleFontSize = 62;
-        const int optionFontSize = 28;
-        int optionY = Screen.Height / 2 + titleFontSize / 2 + 20;
-
-        Screen.DrawCenteredText("Game Over!", Screen.Height / 2 - titleFontSize / 2, titleFontSize, Color.Red);
-        Screen.DrawCenteredText("[R] Replay", optionY, optionFontSize, Color.Gray);
-        Screen.DrawCenteredText("[Q] Quit", optionY + optionFontSize + 10, optionFontSize, Color.Gray);
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Assets.OverlayBlack);
+        Screen.DrawCenteredText("You Died!", Screen.Height / 2 - titleFontSize / 2, titleFontSize, Color.Red);
+        gameOverMenu.Draw();
     }
 
     void DrawPauseOverlay()
