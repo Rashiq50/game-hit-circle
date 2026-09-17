@@ -9,9 +9,9 @@
     <RootNamespace>HitThemAll</RootNamespace>
   </PropertyGroup>
 
-  <!-- Publish settings: `dotnet publish -c Release` produces one self-contained exe (no .NET install needed). -->
-  <PropertyGroup>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <!-- Publish settings: `dotnet publish -c Release -r win-x64` (or osx-arm64 / osx-x64 / linux-x64)
+       produces one self-contained exe (no .NET install needed). No RID is set here so `dotnet run` works on any OS. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
