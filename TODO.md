@@ -9,3 +9,5 @@ ADD:
 5. On Ultimate: Try with Camera effects such as pan-zoom
 6. Think About pick up items (health, power)
 7. Need more enemy variation (melee, straight shooter, aim shooter, multi shooter, moving (?))
+8. Multiple Eenemy (done).
+9. Enemy spawn cooldown.
