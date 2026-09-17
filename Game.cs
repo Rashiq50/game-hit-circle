@@ -187,7 +187,6 @@ class Game
         popup.Update(dt);
         SpawnEnemies();
 
-        var demon = demons.Find(d => d.Overlaps(player));
         Demon? clickedDemon()
         {
             if (Raylib.IsMouseButtonPressed(MouseButton.Left))
@@ -209,6 +208,7 @@ class Game
             }
         }
 
+        var demon = demons.Find(d => d.Overlaps(player));
         if (demon != null)
         {
             if (demon.IsAlive && !player.IsAttacking)
