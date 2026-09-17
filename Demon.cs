@@ -16,6 +16,7 @@ class Demon
     DemonState state = DemonState.Idle;
     float animElapsed;
     float fireCooldown;
+    bool SelectedForUlt = false;
     // Shots already in flight outlive the demon that fired them; they only vanish off-screen or on hit.
     readonly List<EnemyProjectile> projectiles = [];
 
@@ -29,6 +30,16 @@ class Demon
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
     public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
     public int ScorePoint => PointDrop;
+
+    public bool IsSelectedForUlt => SelectedForUlt;
+    public void SelectForUlt()
+    {
+        SelectedForUlt = true;
+    }
+    public void ReleaseFromUlt()
+    {
+        SelectedForUlt = false;
+    }
 
     public void Kill(Player player)
     {

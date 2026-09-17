@@ -7,6 +7,8 @@ class Game
     const float ShakeStrength = 6f; // pixels
     float shakeTimeLeft;
 
+    const float MaxEnemies = 3;
+    const float EnemyCooldown = 2.0f;
     public void Shake() => shakeTimeLeft = ShakeDuration;
 
     public Vector2 ShakeOffset => shakeTimeLeft > 0
@@ -14,8 +16,9 @@ class Game
         : Vector2.Zero;
 
     readonly Player player = new();
-    readonly Demon demon = new();
+    // readonly Demon demon = new();
     readonly ScorePopup popup = new();
+    readonly List<Demon> demons = [];
 
     GameState state = GameState.Welcome;
     // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
@@ -66,7 +69,10 @@ class Game
         if (state is GameState.Playing or GameState.Paused)
         {
             player.Draw();
-            demon.Draw();
+            foreach (var demon in demons)
+            {
+                demon.Draw();
+            }
             popup.Draw();
         }
         if (showCollision) CollisionMap.Draw();
@@ -106,8 +112,13 @@ class Game
         score = 0;
         highScore = checkpoint.HighScore;
         player.Reset();
-        demon.ClearProjectiles();
-        demon.Respawn(player);
+        if (demons.Count < MaxEnemies)
+        {
+            Demon demon = new Demon();
+            demons.Add(demon);
+            demon.ClearProjectiles();
+            demon.Respawn(player);
+        }
         CancelUltimateSequence();
     }
 
@@ -118,8 +129,13 @@ class Game
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
-        demon.ClearProjectiles();
-        demon.Respawn(player);
+        if (demons.Count <= MaxEnemies)
+        {
+            Demon demon = new Demon();
+            demons.Add(demon);
+            demon.ClearProjectiles();
+            demon.Respawn(player);
+        }
         CancelUltimateSequence();
     }
 
@@ -174,36 +190,68 @@ class Game
         player.Update(dt);
         popup.Update(dt);
 
-        if (player.PlayerUlti == 100)
+        if (demons.Count < MaxEnemies)
         {
-            bool clickedDemon = Raylib.IsMouseButtonPressed(MouseButton.Left) && demon.ContainsPoint(World.MousePosition());
-            if (demon.IsAlive && !player.IsAttacking && !cinematic && clickedDemon) StartUltimate(demon);
+            Demon newDemon = new Demon();
+            demons.Add(newDemon);
+            newDemon.Respawn(player);
         }
 
-
-        if (demon.IsAlive && !player.IsAttacking && demon.Overlaps(player)) StartSwing(demon);
-        if (demon.IsAlive && player.SwingLanded)
+        var demon = demons.Find(d => d.Overlaps(player));
+        Demon? clickedDemon()
         {
-            demon.Kill(player);
-            SaveProgress();
+            if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+            {
+                Demon? find = demons.Find(d => d.ContainsPoint(World.MousePosition()));
+                return find;
+            }
+            return null;
+            // return false;
+        }
+
+        var ClickedDemon = clickedDemon();
+        if (player.PlayerUlti == 100 && ClickedDemon != null)
+        {
+            if (ClickedDemon.IsAlive && !player.IsAttacking && !cinematic)
+            {
+                ClickedDemon.SelectForUlt();
+                StartUltimate(ClickedDemon);
+            }
+        }
+
+        if (demon != null)
+        {
+            if (demon.IsAlive && !player.IsAttacking)
+            {
+                StartSwing(demon);
+            }
+            if (demon.IsAlive && player.SwingLanded)
+            {
+                demon.Kill(player);
+                SaveProgress();
+
+            }
+            if (demon.IsDead)
+            {
+                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+                Raylib.PlaySound(Assets.ScoreSound);
+                popup.Show(demon.Center, demon.ScorePoint);
+                // demon.Respawn(player);
+                // endTime = Raylib.GetTime() + PlayTime + bonusTime;
+                // bonusTime = 0;
+            }
 
         }
 
-        demon.Update(dt, player, holdFire: cinematic);
-        if (!cinematic && demon.ConsumeProjectileHit(player))
+        foreach (var dm in demons)
         {
-            Shake();
+            dm.Update(dt, player, holdFire: cinematic);
+            if (!cinematic && dm.ConsumeProjectileHit(player))
+            {
+                Shake();
+            }
         }
-
-        if (demon.IsDead)
-        {
-            Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-            Raylib.PlaySound(Assets.ScoreSound);
-            popup.Show(demon.Center, demon.ScorePoint);
-            demon.Respawn(player);
-            // endTime = Raylib.GetTime() + PlayTime + bonusTime;
-            // bonusTime = 0;
-        }
+        demons.RemoveAll(p => p.IsDead);
 
     }
 
@@ -235,16 +283,20 @@ class Game
 
     void UpdateUltimateSequence()
     {
-        switch (ultimatePhase)
+        Demon? demon = demons.Find(d => d.IsSelectedForUlt);
+        if (demon != null)
         {
-            case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
-                player.Ultimate(demon.Center);
-                ultimatePhase = UltimatePhase.Attack;
-                break;
-            case UltimatePhase.Attack when !player.IsAttacking:
-                ultimatePhase = UltimatePhase.None;
-                CameraFocus.Release();
-                break;
+            switch (ultimatePhase)
+            {
+                case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
+                    player.Ultimate(demon.Center);
+                    ultimatePhase = UltimatePhase.Attack;
+                    break;
+                case UltimatePhase.Attack when !player.IsAttacking:
+                    ultimatePhase = UltimatePhase.None;
+                    CameraFocus.Release();
+                    break;
+            }
         }
     }
 
