@@ -11,3 +11,5 @@ ADD:
 7. Need more enemy variation (melee, straight shooter, aim shooter, multi shooter, moving (?))
 8. Multiple Eenemy (done).
 9. Enemy spawn cooldown.
+10. Player multiple weapons (melee, ranged).
+11. Buy from store using score(coin).
