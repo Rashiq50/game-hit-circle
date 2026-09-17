@@ -13,3 +13,4 @@ ADD:
 9. Enemy spawn cooldown.
 10. Player multiple weapons (melee, ranged).
 11. Buy from store using score(coin).
+12. Enemy Direction, Enemy Health
