@@ -8,10 +8,15 @@ class Player
     const float BoostMultiplier = 2.5f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
-    const float AttackFps = 16f;
+    // Both attacks play the same axe strip; the speed is what makes one feel quick and the other committed.
+    const float LightAttackFps = 22f; // fast swing
+    const float HeavyAttackFps = 9f; // slow swing
+    const float LightDamage = 20;
+    const float HeavyDamage = 40;
     const int AttackImpactFrame = 3;
-    /// <summary>Runtime cheat (F4 in-game): full health and ultimate, and no damage taken.</summary>
+    /// Runtime cheat (F4 in-game): full health and ultimate, and no damage taken.
     public static bool GodMode { get; private set; }
+    // 
     private bool IsUltimate = false;
     private int UltimateKills = 0;
     private int UltimateKillLimit = 1;
@@ -21,7 +26,9 @@ class Player
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
-    const int AttackReach = 20;
+    const int LightAttackReach = 20;
+    const int HeavyAttackReach = 40;
+    int AttackReach => attackKind == AttackKind.Heavy ? HeavyAttackReach : LightAttackReach;
 
     /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
     Rectangle GetAttackingBoundBox() => facing switch
@@ -37,11 +44,14 @@ class Player
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
+    AttackKind attackKind;
     public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
     public bool IsUsingUltimate => IsUltimate;
     public float GetUltimateDamage => 250;
-    public float GetMeleeDamage => 20;
+    public float GetMeleeDamage => attackKind == AttackKind.Heavy ? HeavyDamage : LightDamage;
+    /// <summary>Which swing is in progress (or was last thrown); Game uses it to pick the damage and, later, stagger.</summary>
+    public AttackKind CurrentAttack => attackKind;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
     public bool SwingLanded { get; private set; }
 
@@ -55,6 +65,7 @@ class Player
         _ => Assets.HeroIdle,
     })[(int)facing];
 
+    float AttackFps => attackKind == AttackKind.Heavy ? HeavyAttackFps : LightAttackFps;
     float AttackDuration => Strip.FrameCount / AttackFps;
 
     int CurrentFrame => IsAttacking
@@ -83,8 +94,16 @@ class Player
         animElapsed = 0;
     }
 
-    public void Attack()
+    /// <summary>Ignored mid-swing so a heavy's windup can't be cancelled by mashing.</summary>
+    public void Attack(AttackKind kind)
     {
+        if (IsAttacking) return;
+        StartSwing(kind);
+    }
+
+    void StartSwing(AttackKind kind)
+    {
+        attackKind = kind;
         Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         Raylib.PlaySound(Assets.SwordSound);
         state = PlayerState.Attacking;
@@ -99,7 +118,7 @@ class Player
         {
             PlayerUlti = 0;
         }
-        Attack();
+        StartSwing(AttackKind.Heavy);
     }
 
     public void ReceiveDamage(float damage) => PlayerCurrentHp = !GodMode ? Math.Max(0, PlayerCurrentHp - damage) : PlayerHealth;

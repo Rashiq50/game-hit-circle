@@ -296,10 +296,6 @@ class Game
             return;
         }
 
-        if (Raylib.IsKeyPressed(KeyboardKey.Space))
-        {
-            player.Attack();
-        }
         if (Raylib.IsKeyPressed(KeyboardKey.F))
         {
             if (IsTargeting) CancelUltimateSequence();
@@ -313,6 +309,12 @@ class Game
         }
 
         bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
+
+        if (!cinematic)
+        {
+            if (Raylib.IsMouseButtonPressed(MouseButton.Left)) player.Attack(AttackKind.Light);
+            else if (Raylib.IsMouseButtonPressed(MouseButton.Right)) player.Attack(AttackKind.Heavy);
+        }
 
         player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
         popup.Update(dt);
@@ -392,7 +394,6 @@ class Game
 
     void StartUltimate(Demon demon)
     {
-        score += demon.ScorePoint;
         // Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         // Raylib.PlaySound(Assets.SwordSound);
         ultimatePhase = UltimatePhase.ZoomIn;
@@ -408,21 +409,17 @@ class Game
 
     void UpdateUltimateSequence()
     {
-        Demon? demon = demons.Find(d => d.IsSelectedForUlt);
-        if (demon != null)
+        switch (ultimatePhase)
         {
-            switch (ultimatePhase)
-            {
-                case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
-                    player.Ultimate(demon.Center);
-                    ultimatePhase = UltimatePhase.Attack;
-                    break;
-                case UltimatePhase.Attack when !player.IsAttacking:
-                    ultimatePhase = UltimatePhase.None;
-                    CameraFocus.Release();
-                    demon.ReleaseFromUlt();
-                    break;
-            }
+            case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
+                Demon? target = demons.Find(d => d.IsSelectedForUlt);
+                if (target is null) { CancelUltimateSequence(); break; } // target gone (shouldn't happen: the world is frozen)
+                player.Ultimate(target.Center);
+                ultimatePhase = UltimatePhase.Attack;
+                break;
+            case UltimatePhase.Attack when !player.IsAttacking:
+                CancelUltimateSequence();
+                break;
         }
     }
 
