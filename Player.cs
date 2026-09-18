@@ -3,7 +3,8 @@ using Raylib_cs;
 
 class Player
 {
-    const int Size = 40;
+    const int SizeX = 30;
+    const int SizeY = 40;
     const float Speed = 300f;
     const float BoostMultiplier = 2.5f;
     const float DrawSize = 96f;
@@ -33,19 +34,21 @@ class Player
     /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
     Rectangle GetAttackingBoundBox() => facing switch
     {
-        Direction.Left => new Rectangle(position.X - AttackReach, position.Y, Size + AttackReach, Size),
-        Direction.Right => new Rectangle(position.X, position.Y, Size + AttackReach, Size),
-        Direction.Up => new Rectangle(position.X, position.Y - AttackReach, Size, Size + AttackReach),
-        Direction.Down => new Rectangle(position.X, position.Y, Size, Size + AttackReach),
-        _ => new Rectangle(position.X, position.Y, Size, Size),
+        Direction.Left => new Rectangle(position.X - AttackReach, position.Y, SizeX + AttackReach, SizeY),
+        Direction.Right => new Rectangle(position.X, position.Y, SizeX + AttackReach, SizeY),
+        Direction.Up => new Rectangle(position.X, position.Y - AttackReach, SizeX, SizeY + AttackReach),
+        Direction.Down => new Rectangle(position.X, position.Y, SizeX, SizeY + AttackReach),
+        _ => new Rectangle(position.X, position.Y, SizeX, SizeY),
     };
 
-    Vector2 position = World.RandomPoint() - new Vector2(Size / 2f);
+    /// <summary>Offset from the hit box's top-left to its centre; the box is narrower than tall, so keep the axes apart.</summary>
+    static readonly Vector2 HalfSize = new(SizeX / 2f, SizeY / 2f);
+    Vector2 position = World.RandomPoint() - HalfSize;
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
     AttackKind attackKind;
-    public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, Size, Size);
+    public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, SizeX, SizeY);
     public bool IsAttacking => state == PlayerState.Attacking;
     public bool IsUsingUltimate => IsUltimate;
     public float GetUltimateDamage => 250;
@@ -55,7 +58,7 @@ class Player
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
     public bool SwingLanded { get; private set; }
 
-    public Vector2 Center => position + new Vector2(Size / 2f);
+    public Vector2 Center => position + HalfSize;
 
     SpriteStrip Strip => (state switch
     {
@@ -79,7 +82,7 @@ class Player
 
     public void Reset()
     {
-        position = World.RandomPoint() - new Vector2(Size / 2f);
+        position = World.RandomPoint() - HalfSize;
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
@@ -87,7 +90,7 @@ class Player
     }
     public void Resume(float health, float ulti)
     {
-        position = World.RandomPoint() - new Vector2(Size / 2f);
+        position = World.RandomPoint() - HalfSize;
         state = PlayerState.Idle;
         PlayerCurrentHp = health;
         PlayerUlti = ulti;
@@ -149,11 +152,13 @@ class Player
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
         float step = (boosting ? Speed * BoostMultiplier : Speed) * dt;
 
-        Vector2 move = Vector2.Zero;
-        if (Raylib.IsKeyDown(KeyboardKey.D)) { move.X += step; facing = Direction.Right; }
-        if (Raylib.IsKeyDown(KeyboardKey.A)) { move.X -= step; facing = Direction.Left; }
-        if (Raylib.IsKeyDown(KeyboardKey.W)) { move.Y -= step; facing = Direction.Up; }
-        if (Raylib.IsKeyDown(KeyboardKey.S)) { move.Y += step; facing = Direction.Down; }
+        Vector2 dir = Vector2.Zero;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) { dir.X += 1; facing = Direction.Right; }
+        if (Raylib.IsKeyDown(KeyboardKey.A)) { dir.X -= 1; facing = Direction.Left; }
+        if (Raylib.IsKeyDown(KeyboardKey.W)) { dir.Y -= 1; facing = Direction.Up; }
+        if (Raylib.IsKeyDown(KeyboardKey.S)) { dir.Y += 1; facing = Direction.Down; }
+        // Normalise so diagonals cover the same distance per second as straight lines.
+        Vector2 move = dir == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(dir) * step;
 
         state = move == Vector2.Zero ? PlayerState.Idle
               : boosting ? PlayerState.Running
@@ -167,8 +172,8 @@ class Player
     void TryMove(Vector2 delta, IReadOnlyList<Rectangle> obstacles)
     {
         if (delta == Vector2.Zero) return;
-        var next = Vector2.Clamp(position + delta, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
-        var nextBounds = new Rectangle(next.X, next.Y, Size, Size);
+        var next = Vector2.Clamp(position + delta, Vector2.Zero, new Vector2(World.Width - SizeX, World.Height - SizeY));
+        var nextBounds = new Rectangle(next.X, next.Y, SizeX, SizeY);
         if (CollisionMap.Blocks(nextBounds)) return;
         // An obstacle only blocks entry: if we're already inside one (e.g. it spawned on us) we can still walk out.
         foreach (var o in obstacles)
@@ -191,12 +196,12 @@ class Player
 
     void TeleportToEntity(Vector2 at)
     {
-        Vector2[] candidates = [new Vector2(at.X, at.Y - Size), new Vector2(at.X, at.Y + Size), new Vector2(at.X - Size, at.Y), new Vector2(at.X + Size, at.Y)];
+        Vector2[] candidates = [new Vector2(at.X, at.Y - SizeY), new Vector2(at.X, at.Y + SizeY), new Vector2(at.X - SizeX, at.Y), new Vector2(at.X + SizeX, at.Y)];
         // List<int> unblockedPoints = new List<int>{};
         // TODO: later play with teleport direction etc
         for (int i = 0; i < candidates.Length; i++)
         {
-            if (!CollisionMap.Blocks(new Rectangle(candidates[i].X, candidates[i].Y, Size, Size)))
+            if (!CollisionMap.Blocks(new Rectangle(candidates[i].X, candidates[i].Y, SizeX, SizeY)))
             {
                 Console.WriteLine($"at: {at}  going: {candidates[i]}");
                 position = candidates[i];
