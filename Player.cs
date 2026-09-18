@@ -91,7 +91,8 @@ class Player
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
-    public void Update(float dt)
+    /// <param name="obstacles">Solid boxes besides the walls (live enemies); the player slides along them like walls.</param>
+    public void Update(float dt, IReadOnlyList<Rectangle> obstacles)
     {
         SwingLanded = false;
         if (IsAttacking)
@@ -115,15 +116,20 @@ class Player
               : PlayerState.Walking;
 
         // Resolve each axis on its own so a wall only stops the component pushing into it and the player slides along it.
-        TryMove(new Vector2(move.X, 0));
-        TryMove(new Vector2(0, move.Y));
+        TryMove(new Vector2(move.X, 0), obstacles);
+        TryMove(new Vector2(0, move.Y), obstacles);
     }
 
-    void TryMove(Vector2 delta)
+    void TryMove(Vector2 delta, IReadOnlyList<Rectangle> obstacles)
     {
         if (delta == Vector2.Zero) return;
         var next = Vector2.Clamp(position + delta, Vector2.Zero, new Vector2(World.Width - Size, World.Height - Size));
-        if (!CollisionMap.Blocks(new Rectangle(next.X, next.Y, Size, Size))) position = next;
+        var nextBounds = new Rectangle(next.X, next.Y, Size, Size);
+        if (CollisionMap.Blocks(nextBounds)) return;
+        // An obstacle only blocks entry: if we're already inside one (e.g. it spawned on us) we can still walk out.
+        foreach (var o in obstacles)
+            if (Raylib.CheckCollisionRecs(o, nextBounds) && !Raylib.CheckCollisionRecs(o, Bounds)) return;
+        position = next;
     }
 
     void UpdateAttack(float dt)

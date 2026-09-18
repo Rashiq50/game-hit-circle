@@ -14,3 +14,4 @@ ADD:
 10. Player multiple weapons (melee, ranged).
 11. Buy from store using score(coin).
 12. Enemy Direction, Enemy Health
+13. Player -> Space: Basic Attack, E: Parry/Deflect/Block, F: Ultimate

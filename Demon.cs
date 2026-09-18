@@ -3,6 +3,9 @@ using Raylib_cs;
 
 class Demon
 {
+    // Debug values
+    const bool EnemyAttack = false;
+    //
     const float Radius = 25f;
     const float DrawSize = 110f;
     const float IdleFps = 12f;
@@ -26,7 +29,7 @@ class Demon
 
     public bool IsAlive => state == DemonState.Idle;
     public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
-    Rectangle Bounds => BoundsAt(Center);
+    public Rectangle Bounds => BoundsAt(Center);
 
     static Rectangle BoundsAt(Vector2 center) =>
         new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
@@ -88,7 +91,7 @@ class Demon
         animElapsed += dt;
         if (holdFire) return;
 
-        if (IsAlive)
+        if (IsAlive && EnemyAttack)
         {
             fireCooldown -= dt;
             if (fireCooldown <= 0)

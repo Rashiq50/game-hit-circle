@@ -197,7 +197,7 @@ class Game
         }
 
         bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
-        player.Update(dt);
+        player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
         popup.Update(dt);
         SpawnEnemies();
 
@@ -212,7 +212,6 @@ class Game
             {
                 demon.Kill(player);
                 SaveProgress();
-
             }
             if (demon.IsDead)
             {
