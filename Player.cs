@@ -20,11 +20,23 @@ class Player
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
+    const int AttackReach = 20; // how far the swing extends the hit box in the facing direction
+
+    /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
+    Rectangle GetAttackingBoundBox() => facing switch
+    {
+        Direction.Left => new Rectangle(position.X - AttackReach, position.Y, Size + AttackReach, Size),
+        Direction.Right => new Rectangle(position.X, position.Y, Size + AttackReach, Size),
+        Direction.Up => new Rectangle(position.X, position.Y - AttackReach, Size, Size + AttackReach),
+        Direction.Down => new Rectangle(position.X, position.Y, Size, Size + AttackReach),
+        _ => new Rectangle(position.X, position.Y, Size, Size),
+    };
+
     Vector2 position = World.RandomPoint() - new Vector2(Size / 2f);
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
-    public Rectangle Bounds => new(position.X, position.Y, Size, Size);
+    public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
     public bool IsUsingUltimate => IsUltimate;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>

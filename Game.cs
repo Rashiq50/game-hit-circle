@@ -154,7 +154,7 @@ class Game
             highScore = Math.Max(highScore, score);
             SaveProgress();
         }
-        mainMenu.Reset(KeyboardKey.C); // start on Continue when there's a save, else the first option
+        mainMenu.Reset(KeyboardKey.C);
     }
 
     void Pause()
@@ -197,7 +197,6 @@ class Game
         {
             player.Attack();
         }
-        // F toggles target selection when the meter is full. Everything else waits for a pick (or a cancel).
         if (Raylib.IsKeyPressed(KeyboardKey.F))
         {
             if (IsTargeting) CancelUltimateSequence();
@@ -216,29 +215,27 @@ class Game
         popup.Update(dt);
         SpawnEnemies();
 
-        // var demon = demons.Find(d => d.Overlaps(player));
-        // if (demon != null)
-        // {
-        //     if (demon.IsAlive && !player.IsAttacking)
-        //     {
-        //         StartSwing(demon);
-        //     }
-        //     if (demon.IsAlive && player.SwingLanded)
-        //     {
-        //         demon.Kill(player);
-        //         SaveProgress();
-        //     }
-        //     if (demon.IsDead)
-        //     {
-        //         Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-        //         Raylib.PlaySound(Assets.ScoreSound);
-        //         popup.Show(demon.Center, demon.ScorePoint);
-        //         // demon.Respawn(player);
-        //         // endTime = Raylib.GetTime() + PlayTime + bonusTime;
-        //         // bonusTime = 0;
-        //     }
-
-        // }
+        var demon = demons.Find(d => d.Overlaps(player));
+        if (demon != null)
+        {
+            if (demon.IsAlive && player.SwingLanded)
+            {
+                demon.Kill(player);
+                SaveProgress();
+                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+                Raylib.PlaySound(Assets.ScoreSound);
+                popup.Show(demon.Center, demon.ScorePoint);
+            }
+            // if (demon.IsDead)
+            // {
+            //     Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+            //     Raylib.PlaySound(Assets.ScoreSound);
+            //     popup.Show(demon.Center, demon.ScorePoint);
+            //     // demon.Respawn(player);
+            //     // endTime = Raylib.GetTime() + PlayTime + bonusTime;
+            //     // bonusTime = 0;
+            // }
+        }
 
         foreach (var dm in demons)
         {
@@ -272,12 +269,11 @@ class Game
         return demons.Find(d => d.IsAlive && d.IsUnderCursor(mouse));
     }
 
-    void StartSwing(Demon demon)
-    {
-        score += demon.ScorePoint;
-        // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
-        player.Attack();
-    }
+    // void StartSwing(Demon demon)
+    // {
+    //     score += demon.ScorePoint;
+    //     // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
+    // }
 
     // The ultimate starts with a frozen target pick (F when the meter is full), then plays a short cinematic:
     // zoom onto the demon, then teleport and swing, then zoom back out.
