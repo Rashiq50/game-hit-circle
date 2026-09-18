@@ -31,14 +31,21 @@ class Game
     public bool BlurWorld => state == GameState.Paused; // the pause menu sits over a blurred snapshot of the action
     bool showCollision; // F1 toggles the wall outlines
     bool showHitBoxes; // F2 toggles the player/enemy hit boxes
+    bool showDebugHelp; // Shift+F1 toggles the debug key list overlay
 
     public Game() => BuildMenus();
 
     public void Update(float dt)
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.F1)) showCollision = !showCollision;
+        bool shift = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+        if (Raylib.IsKeyPressed(KeyboardKey.F1))
+        {
+            if (shift) showDebugHelp = !showDebugHelp;
+            else showCollision = !showCollision;
+        }
         if (Raylib.IsKeyPressed(KeyboardKey.F2)) showHitBoxes = !showHitBoxes;
         if (Raylib.IsKeyPressed(KeyboardKey.F3)) Demon.AggroEnabled = !Demon.AggroEnabled;
+        if (Raylib.IsKeyPressed(KeyboardKey.F4)) player.ToggleGodMode();
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
         {
@@ -91,6 +98,12 @@ class Game
 
     public void DrawUi()
     {
+        DrawStateUi();
+        if (showDebugHelp) DrawDebugHelp(); // always on top, in every state
+    }
+
+    void DrawStateUi()
+    {
         switch (state)
         {
             case GameState.Welcome:
@@ -112,6 +125,42 @@ class Game
             case GameState.GameOver:
                 DrawGameOver();
                 break;
+        }
+    }
+
+    /// <summary>Panel in the top-right listing every debug key with its current on/off state.</summary>
+    void DrawDebugHelp()
+    {
+        const int fontSize = 18;
+        const int lineHeight = 24;
+        const int pad = 12;
+        const int width = 320;
+        (string key, string what, bool? on)[] rows =
+        [
+            ("Shift+F1", "Debug key list", showDebugHelp),
+            ("F1", "Collision map", showCollision),
+            ("F2", "Hit boxes", showHitBoxes),
+            ("F3", "Enemy aggro", Demon.AggroEnabled),
+            ("F4", "Player god mode", Player.GodMode),
+            ("F11", "Borderless fullscreen", null),
+        ];
+
+        int x = Screen.Width - ScreenMargin - width;
+        int y = ScreenMargin;
+        int height = pad * 2 + lineHeight * (rows.Length + 1);
+        Raylib.DrawRectangle(x, y, width, height, Assets.OverlayBlack);
+        Raylib.DrawRectangleLines(x, y, width, height, Color.Gray);
+
+        int ty = y + pad;
+        Raylib.DrawText("DEBUG KEYS", x + pad, ty, fontSize, Color.Yellow);
+        ty += lineHeight;
+        foreach (var (key, what, on) in rows)
+        {
+            Raylib.DrawText(key, x + pad, ty, fontSize, Color.White);
+            Raylib.DrawText(what, x + pad + 90, ty, fontSize, Color.LightGray);
+            if (on is bool b)
+                Raylib.DrawText(b ? "ON" : "OFF", x + width - pad - 36, ty, fontSize, b ? Color.Lime : Color.Red);
+            ty += lineHeight;
         }
     }
 
@@ -416,8 +465,11 @@ class Game
         DrawHealthBar();
         DrawUltimateBar();
         DrawUltimateHint();
+        int cheatY = ScreenMargin + 28;
         if (!Demon.AggroEnabled)
-            Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, ScreenMargin + 28, 18, Color.Orange);
+            Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, cheatY, 18, Color.Orange);
+        if (Player.GodMode)
+            Raylib.DrawText("God mode ON [F4]", ScreenMargin, cheatY + (Demon.AggroEnabled ? 0 : 22), 18, Color.Orange);
     }
 
     void DrawUltimateHint()

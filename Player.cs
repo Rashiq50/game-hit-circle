@@ -10,13 +10,14 @@ class Player
     const float AnimFps = 10f;
     const float AttackFps = 16f;
     const int AttackImpactFrame = 3;
-    private static readonly bool GodMode = false;
+    /// <summary>Runtime cheat (F4 in-game): full health and ultimate, and no damage taken.</summary>
+    public static bool GodMode { get; private set; }
     private bool IsUltimate = false;
     private int UltimateKills = 0;
     private int UltimateKillLimit = 1;
     static readonly float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
-    public float PlayerUlti = GodMode ? 100 : 0;
+    public float PlayerUlti;
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
@@ -99,7 +100,17 @@ class Player
         Attack();
     }
 
-    public void ReceiveDamage(float damage) => PlayerCurrentHp = !GodMode ? Math.Max(0, PlayerCurrentHp - damage) : 100;
+    public void ReceiveDamage(float damage) => PlayerCurrentHp = !GodMode ? Math.Max(0, PlayerCurrentHp - damage) : PlayerHealth;
+
+    public void ToggleGodMode()
+    {
+        GodMode = !GodMode;
+        if (GodMode)
+        {
+            PlayerCurrentHp = PlayerHealth;
+            PlayerUlti = 100;
+        }
+    }
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
