@@ -79,6 +79,8 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         fireCooldown = FireInterval;
     }
 
+    public void ReceiveDamage(float damage) => CurrentHp = Math.Max(0, CurrentHp - damage);
+
     public void ClearProjectiles() => projectiles.Clear();
 
     /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the demon is frozen.</summary>

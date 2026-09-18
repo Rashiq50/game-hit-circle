@@ -270,8 +270,12 @@ class Game
         {
             if (demon.IsAlive && player.SwingLanded)
             {
-                demon.Kill(player);
-                SaveProgress();
+                if (Math.Min(0, demon.CurrentHp - 20) <= 0)
+                {
+                    demon.Kill(player);
+                    SaveProgress();
+                }
+                demon.ReceiveDamage(20);
                 Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
                 Raylib.PlaySound(Assets.ScoreSound);
                 popup.Show(demon.Center, demon.ScorePoint);
