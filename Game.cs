@@ -7,7 +7,6 @@ class Game
     const float ShakeStrength = 6f; // pixels
     float shakeTimeLeft;
     const int ScreenMargin = 40;
-    const float MaxEnemies = 3;
     const float EnemyCooldown = 2.0f;
     public void Shake() => shakeTimeLeft = ShakeDuration;
 
@@ -24,6 +23,8 @@ class Game
     // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
     SaveData checkpoint = SaveFile.Load();
     int stage;
+    int spawned; // demons of the current stage's roster that have entered the field so far
+    StageDef CurrentStage => Stages.Get(stage);
     int score; // live score for this stage attempt; rolls back to the checkpoint on quit or game over
     int highScore;
 
@@ -173,6 +174,7 @@ class Game
         highScore = checkpoint.HighScore;
         player.Reset();
         CancelUltimateSequence();
+        BeginStage();
     }
 
     void ContinueRound()
@@ -183,17 +185,37 @@ class Game
         highScore = checkpoint.HighScore;
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
         CancelUltimateSequence();
+        BeginStage();
     }
 
+    /// <summary>Wipes the field and restarts the current stage's roster from its first demon.</summary>
+    void BeginStage()
+    {
+        demons.Clear();
+        spawned = 0;
+    }
+
+    /// <summary>Feeds the roster onto the field in order, never exceeding the stage's live cap.</summary>
     void SpawnEnemies()
     {
-        if (demons.Count < MaxEnemies)
+        var def = CurrentStage;
+        if (spawned < def.TotalEnemies && demons.Count < def.MaxAtOnce)
         {
-            Demon demon = new Demon(25, 10, 12, 0, 60, EnemyAttackTypes.Ranged);
+            Demon demon = def.Enemies[spawned++].Spawn();
             demons.Add(demon);
-            demon.ClearProjectiles();
             demon.Respawn(player);
         }
+    }
+
+    bool StageCleared => spawned >= CurrentStage.TotalEnemies && demons.Count == 0;
+
+    /// <summary>Moves the checkpoint forward; the last stage just replays until there is a proper ending.</summary>
+    void AdvanceStage()
+    {
+        if (!Stages.IsLast(stage)) stage++;
+        checkpoint = checkpoint with { Stage = stage };
+        SaveProgress();
+        BeginStage();
     }
 
     void GoToMainMenu(bool shouldSave)
@@ -273,6 +295,7 @@ class Game
             if (Math.Max(0, demon.CurrentHp - damage) <= 0)
             {
                 demon.Kill(player);
+                score += demon.ScorePoint;
                 SaveProgress();
                 Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
                 Raylib.PlaySound(Assets.ScoreSound);
@@ -301,7 +324,7 @@ class Game
             }
         }
         demons.RemoveAll(p => p.IsDead);
-
+        if (StageCleared) AdvanceStage();
     }
 
     /// <summary>The world is frozen; only the hover highlight animates until the player clicks a demon.</summary>
@@ -464,6 +487,8 @@ class Game
     {
         Raylib.DrawText($"Score: {score}", ScreenMargin, ScreenMargin, 22, Color.White);
         Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, 22, Color.Gold);
+        int demonsLeft = CurrentStage.TotalEnemies - spawned + demons.Count(d => d.IsAlive);
+        Raylib.DrawText($"Stage {stage}/{Stages.Count}   Demons left: {demonsLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         // Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
