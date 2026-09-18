@@ -25,6 +25,15 @@ class Game
     int stage;
     int spawned; // demons of the current stage's roster that have entered the field so far
     StageDef CurrentStage => Stages.Get(stage);
+    // Stage banner ("Stage 3 complete!", "Stage 4"): the world keeps running underneath, but spawning waits for it.
+    const float BannerDuration = 1.8f;
+    const float BannerFadeIn = 0.2f;
+    const float BannerFadeOut = 0.5f;
+    string bannerTitle = "";
+    string bannerSubtitle = "";
+    float bannerTimeLeft;
+    Action? afterBanner; // runs once the banner has faded out, e.g. advancing to the next stage
+    bool BannerShowing => bannerTimeLeft > 0;
     int score; // live score for this stage attempt; rolls back to the checkpoint on quit or game over
     int highScore;
 
@@ -193,11 +202,32 @@ class Game
     {
         demons.Clear();
         spawned = 0;
+        int total = CurrentStage.TotalEnemies;
+        ShowBanner($"Stage {stage}", $"{total} demon{(total == 1 ? "" : "s")} incoming");
     }
 
-    /// <summary>Feeds the roster onto the field in order, never exceeding the stage's live cap.</summary>
+    void ShowBanner(string title, string subtitle = "", Action? then = null)
+    {
+        bannerTitle = title;
+        bannerSubtitle = subtitle;
+        bannerTimeLeft = BannerDuration;
+        afterBanner = then;
+    }
+
+    void UpdateBanner(float dt)
+    {
+        if (!BannerShowing) return;
+        bannerTimeLeft -= dt;
+        if (bannerTimeLeft > 0) return;
+        var then = afterBanner;
+        afterBanner = null;
+        then?.Invoke();
+    }
+
+    /// <summary>Feeds the roster onto the field in order, never exceeding the stage's live cap; held while a banner is up.</summary>
     void SpawnEnemies()
     {
+        if (BannerShowing) return;
         var def = CurrentStage;
         if (spawned < def.TotalEnemies && demons.Count < def.MaxAtOnce)
         {
@@ -258,6 +288,7 @@ class Game
     {
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
         CameraFocus.Update(dt);
+        UpdateBanner(dt);
         UpdateUltimateSequence();
         if (player.PlayerCurrentHp <= 0)
         {
@@ -324,7 +355,8 @@ class Game
             }
         }
         demons.RemoveAll(p => p.IsDead);
-        if (StageCleared) AdvanceStage();
+        if (StageCleared && !BannerShowing)
+            ShowBanner($"Stage {stage} complete!", then: AdvanceStage);
     }
 
     /// <summary>The world is frozen; only the hover highlight animates until the player clicks a demon.</summary>
@@ -483,8 +515,25 @@ class Game
         pauseMenu.Draw();
     }
 
+    /// <summary>Centered title over a dark band; fades in quickly and out slowly so it never pops.</summary>
+    void DrawBanner()
+    {
+        if (!BannerShowing) return;
+        float elapsed = BannerDuration - bannerTimeLeft;
+        float alpha = Math.Min(1f, Math.Min(elapsed / BannerFadeIn, bannerTimeLeft / BannerFadeOut));
+        const int titleFontSize = 56;
+        const int subtitleFontSize = 24;
+        const int bandHeight = 130;
+        int bandY = Screen.Height / 2 - bandHeight / 2;
+        Raylib.DrawRectangle(0, bandY, Screen.Width, bandHeight, Raylib.Fade(Color.Black, 0.55f * alpha));
+        Screen.DrawCenteredText(bannerTitle, bandY + 18, titleFontSize, Raylib.Fade(Color.Beige, alpha));
+        if (bannerSubtitle.Length > 0)
+            Screen.DrawCenteredText(bannerSubtitle, bandY + 18 + titleFontSize + 8, subtitleFontSize, Raylib.Fade(Color.LightGray, alpha));
+    }
+
     void DrawHud()
     {
+        DrawBanner();
         Raylib.DrawText($"Score: {score}", ScreenMargin, ScreenMargin, 22, Color.White);
         Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, 22, Color.Gold);
         int demonsLeft = CurrentStage.TotalEnemies - spawned + demons.Count(d => d.IsAlive);
