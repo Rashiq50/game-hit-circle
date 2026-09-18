@@ -1,9 +1,9 @@
 using System.Numerics;
 using Raylib_cs;
 
-class EnemyProjectile(Vector2 from, Vector2 toward, float damage)
+class EnemyProjectile(Vector2 from, Vector2 toward, float damage, float speed)
 {
-    const float Speed = 400f;
+    // const float Speed = 400f;
     const float Radius = 15f;
     const float DrawSize = 34f;
 
@@ -33,7 +33,7 @@ class EnemyProjectile(Vector2 from, Vector2 toward, float damage)
     {
         if (!Active) return;
 
-        position += direction * Speed * dt;
+        position += direction * speed * dt;
 
         bool offScreen = position.X < -Radius || position.X > World.Width + Radius
                       || position.Y < -Radius || position.Y > World.Height + Radius;

@@ -3,7 +3,7 @@ using Raylib_cs;
 
 enum EnemyAttackTypes { Ranged, Melee, Both }
 
-class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged)
+class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged, float projectileSpeed = 280f)
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
@@ -102,7 +102,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
             fireCooldown -= dt;
             if (fireCooldown <= 0)
             {
-                projectiles.Add(new EnemyProjectile(Center, player.Center, rangedDamage));
+                projectiles.Add(new EnemyProjectile(Center, player.Center, rangedDamage, projectileSpeed));
                 fireCooldown += FireInterval;
             }
         }
