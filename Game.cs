@@ -6,7 +6,7 @@ class Game
     const float ShakeDuration = 0.1f;
     const float ShakeStrength = 6f; // pixels
     float shakeTimeLeft;
-
+    const int ScreenMargin = 40;
     const float MaxEnemies = 3;
     const float EnemyCooldown = 2.0f;
     public void Shake() => shakeTimeLeft = ShakeDuration;
@@ -398,10 +398,10 @@ class Game
 
     void DrawHud()
     {
-        Raylib.DrawText($"Score: {score}", 20, 20, 18, Color.White);
-        Raylib.DrawText($"High: {highScore}", 160, 20, 18, Color.Gold);
+        Raylib.DrawText($"Score: {score}", ScreenMargin, ScreenMargin, 22, Color.White);
+        Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, 22, Color.Gold);
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
-        Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
+        // Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
         DrawUltimateBar();
         DrawUltimateHint();
@@ -410,7 +410,7 @@ class Game
     void DrawUltimateHint()
     {
         const int fontSize = 24;
-        int y = Screen.Height - 30 - fontSize; // bottom centre, level with the health bar
+        int y = Screen.Height - ScreenMargin - fontSize; // bottom centre, level with the health bar
         if (IsTargeting)
             Screen.DrawCenteredText("Click an enemy to unleash your ultimate  -  [F] cancel", y, fontSize, Color.Yellow);
         else if (player.PlayerUlti >= 100 && ultimatePhase == UltimatePhase.None)
@@ -421,9 +421,8 @@ class Game
     {
         const int barWidth = 200;
         const int barHeight = 20;
-        const int margin = 20;
-        int x = margin;
-        int y = Screen.Height - margin - barHeight;
+        int x = ScreenMargin;
+        int y = Screen.Height - ScreenMargin - barHeight;
         int fill = (int)(barWidth * player.HealthFraction);
 
         Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
@@ -435,8 +434,8 @@ class Game
     {
         const int barWidth = 200;
         const int barHeight = 20;
-        const int margin = 45;
-        int x = 20;
+        const int margin = ScreenMargin + 25;
+        int x = ScreenMargin;
         int y = Screen.Height - margin - barHeight;
         int fill = (int)(barWidth * player.PowerFraction);
 
