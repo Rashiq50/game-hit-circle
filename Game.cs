@@ -36,6 +36,7 @@ class Game
     public void Update(float dt)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F1)) showCollision = !showCollision;
+        if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
         {
             case GameState.Welcome:
@@ -408,10 +409,12 @@ class Game
 
     void DrawUltimateHint()
     {
+        const int fontSize = 24;
+        int y = Screen.Height - 30 - fontSize; // bottom centre, level with the health bar
         if (IsTargeting)
-            Screen.DrawCenteredText("Click an enemy to unleash your ultimate  -  [F] cancel", 30, 24, Color.Yellow);
+            Screen.DrawCenteredText("Click an enemy to unleash your ultimate  -  [F] cancel", y, fontSize, Color.Yellow);
         else if (player.PlayerUlti >= 100 && ultimatePhase == UltimatePhase.None)
-            Screen.DrawCenteredText("[F] Ultimate ready", 30, 24, Color.Yellow);
+            Screen.DrawCenteredText("[F] Ultimate ready", y, fontSize, Color.Yellow);
     }
 
     void DrawHealthBar()

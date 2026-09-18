@@ -5,7 +5,10 @@ using Raylib_cs;
 Environment.CurrentDirectory = AppContext.BaseDirectory;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow);
-Raylib.InitWindow(1000, 600, "Hit them all!");
+Raylib.InitWindow(World.Width, World.Height, "Hit them all!");
+// Borderless fullscreen: fills the monitor at its native resolution without a display-mode switch, so alt-tab is instant.
+// The world camera fits itself to whatever size the window ends up with. F11 toggles back to a window (see Game.Update).
+Raylib.ToggleBorderlessWindowed();
 Raylib.InitAudioDevice();
 
 Raylib.SetTargetFPS(60);
