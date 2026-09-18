@@ -30,12 +30,14 @@ class Game
     public bool QuitRequested { get; private set; }
     public bool BlurWorld => state == GameState.Paused; // the pause menu sits over a blurred snapshot of the action
     bool showCollision; // F1 toggles the wall outlines
+    bool showHitBoxes; // F2 toggles the player/enemy hit boxes
 
     public Game() => BuildMenus();
 
     public void Update(float dt)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F1)) showCollision = !showCollision;
+        if (Raylib.IsKeyPressed(KeyboardKey.F2)) showHitBoxes = !showHitBoxes;
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
         {
@@ -76,6 +78,14 @@ class Game
             popup.Draw();
         }
         if (showCollision) CollisionMap.Draw();
+        if (showHitBoxes && state is GameState.Playing or GameState.Paused) DrawHitBoxes();
+    }
+
+    void DrawHitBoxes()
+    {
+        Raylib.DrawRectangleLinesEx(player.Bounds, 2, Color.Lime);
+        foreach (var demon in demons)
+            Raylib.DrawRectangleLinesEx(demon.Bounds, 2, demon.IsAlive ? Color.Red : Color.Gray);
     }
 
     public void DrawUi()
@@ -183,6 +193,10 @@ class Game
             return;
         }
 
+        if (Raylib.IsKeyPressed(KeyboardKey.Space))
+        {
+            player.Attack();
+        }
         // F toggles target selection when the meter is full. Everything else waits for a pick (or a cancel).
         if (Raylib.IsKeyPressed(KeyboardKey.F))
         {
@@ -197,33 +211,34 @@ class Game
         }
 
         bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
+
         player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
         popup.Update(dt);
         SpawnEnemies();
 
-        var demon = demons.Find(d => d.Overlaps(player));
-        if (demon != null)
-        {
-            if (demon.IsAlive && !player.IsAttacking)
-            {
-                StartSwing(demon);
-            }
-            if (demon.IsAlive && player.SwingLanded)
-            {
-                demon.Kill(player);
-                SaveProgress();
-            }
-            if (demon.IsDead)
-            {
-                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-                Raylib.PlaySound(Assets.ScoreSound);
-                popup.Show(demon.Center, demon.ScorePoint);
-                // demon.Respawn(player);
-                // endTime = Raylib.GetTime() + PlayTime + bonusTime;
-                // bonusTime = 0;
-            }
+        // var demon = demons.Find(d => d.Overlaps(player));
+        // if (demon != null)
+        // {
+        //     if (demon.IsAlive && !player.IsAttacking)
+        //     {
+        //         StartSwing(demon);
+        //     }
+        //     if (demon.IsAlive && player.SwingLanded)
+        //     {
+        //         demon.Kill(player);
+        //         SaveProgress();
+        //     }
+        //     if (demon.IsDead)
+        //     {
+        //         Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+        //         Raylib.PlaySound(Assets.ScoreSound);
+        //         popup.Show(demon.Center, demon.ScorePoint);
+        //         // demon.Respawn(player);
+        //         // endTime = Raylib.GetTime() + PlayTime + bonusTime;
+        //         // bonusTime = 0;
+        //     }
 
-        }
+        // }
 
         foreach (var dm in demons)
         {
