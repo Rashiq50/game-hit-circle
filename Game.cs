@@ -176,37 +176,29 @@ class Game
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
         CameraFocus.Update(dt);
         UpdateUltimateSequence();
-        bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
         if (player.PlayerCurrentHp <= 0)
         {
             EndRound();
             return;
         }
 
+        // F toggles target selection when the meter is full. Everything else waits for a pick (or a cancel).
+        if (Raylib.IsKeyPressed(KeyboardKey.F))
+        {
+            if (IsTargeting) CancelUltimateSequence();
+            else if (player.PlayerUlti >= 100 && !player.IsAttacking && ultimatePhase == UltimatePhase.None)
+                ultimatePhase = UltimatePhase.Targeting;
+        }
+        if (IsTargeting)
+        {
+            UpdateTargeting(dt);
+            return;
+        }
+
+        bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
         player.Update(dt);
         popup.Update(dt);
         SpawnEnemies();
-
-        Demon? clickedDemon()
-        {
-            if (Raylib.IsMouseButtonPressed(MouseButton.Left))
-            {
-                Demon? find = demons.Find(d => d.ContainsPoint(World.MousePosition()));
-                return find;
-            }
-            return null;
-            // return false;
-        }
-
-        var ClickedDemon = clickedDemon();
-        if (player.PlayerUlti == 100 && ClickedDemon != null)
-        {
-            if (ClickedDemon.IsAlive && !player.IsAttacking && !cinematic)
-            {
-                ClickedDemon.SelectForUlt();
-                StartUltimate(ClickedDemon);
-            }
-        }
 
         var demon = demons.Find(d => d.Overlaps(player));
         if (demon != null)
@@ -235,6 +227,7 @@ class Game
 
         foreach (var dm in demons)
         {
+            dm.UpdateHover(false, dt);
             dm.Update(dt, player, holdFire: cinematic);
             if (!cinematic && dm.ConsumeProjectileHit(player))
             {
@@ -245,6 +238,25 @@ class Game
 
     }
 
+    /// <summary>The world is frozen; only the hover highlight animates until the player clicks a demon.</summary>
+    void UpdateTargeting(float dt)
+    {
+        Demon? hovered = HoveredTarget();
+        foreach (var dm in demons) dm.UpdateHover(dm == hovered, dt);
+
+        if (hovered != null && Raylib.IsMouseButtonPressed(MouseButton.Left))
+        {
+            hovered.SelectForUlt();
+            StartUltimate(hovered);
+        }
+    }
+
+    Demon? HoveredTarget()
+    {
+        Vector2 mouse = World.MousePosition();
+        return demons.Find(d => d.IsAlive && d.IsUnderCursor(mouse));
+    }
+
     void StartSwing(Demon demon)
     {
         score += demon.ScorePoint;
@@ -252,9 +264,11 @@ class Game
         player.Attack();
     }
 
-    // The ultimate is a short cinematic: zoom onto the demon, then teleport and swing, then zoom back out.
-    enum UltimatePhase { None, ZoomIn, Attack }
+    // The ultimate starts with a frozen target pick (F when the meter is full), then plays a short cinematic:
+    // zoom onto the demon, then teleport and swing, then zoom back out.
+    enum UltimatePhase { None, Targeting, ZoomIn, Attack }
     UltimatePhase ultimatePhase;
+    bool IsTargeting => ultimatePhase == UltimatePhase.Targeting;
 
     void StartUltimate(Demon demon)
     {
@@ -269,6 +283,7 @@ class Game
     {
         ultimatePhase = UltimatePhase.None;
         CameraFocus.Release();
+        foreach (var dm in demons) dm.ReleaseFromUlt();
     }
 
     void UpdateUltimateSequence()
@@ -285,6 +300,7 @@ class Game
                 case UltimatePhase.Attack when !player.IsAttacking:
                     ultimatePhase = UltimatePhase.None;
                     CameraFocus.Release();
+                    demon.ReleaseFromUlt();
                     break;
             }
         }
@@ -321,10 +337,12 @@ class Game
                 bg = Assets.Background;
                 break;
         }
+        if (IsTargeting) GrayscaleEffect.Begin(); // wash the floor out so the coloured targets stand out
         Raylib.DrawTexturePro(bg,
     new Rectangle(0, 0, bg.Width, bg.Height),
     new Rectangle(0, 0, World.Width, World.Height),
     Vector2.Zero, 0, Color.White);
+        if (IsTargeting) GrayscaleEffect.End();
     }
 
     static void DrawWelcome()
@@ -385,6 +403,15 @@ class Game
         Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
         DrawUltimateBar();
+        DrawUltimateHint();
+    }
+
+    void DrawUltimateHint()
+    {
+        if (IsTargeting)
+            Screen.DrawCenteredText("Click an enemy to unleash your ultimate  -  [F] cancel", 30, 24, Color.Yellow);
+        else if (player.PlayerUlti >= 100 && ultimatePhase == UltimatePhase.None)
+            Screen.DrawCenteredText("[F] Ultimate ready", 30, 24, Color.Yellow);
     }
 
     void DrawHealthBar()

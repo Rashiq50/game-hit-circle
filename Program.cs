@@ -13,6 +13,7 @@ Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
 BlurEffect.Load();
+GrayscaleEffect.Load();
 CollisionMap.Load("assets/dungeon.tmx");
 var game = new Game();
 
@@ -32,6 +33,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 }
 
 BlurEffect.Unload();
+GrayscaleEffect.Unload();
 Assets.Unload();
 Raylib.CloseAudioDevice();
 Raylib.CloseWindow();

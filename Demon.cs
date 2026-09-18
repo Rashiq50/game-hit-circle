@@ -11,12 +11,16 @@ class Demon
     const float FireInterval = 2f; // seconds between shots while alive
     const float PowerDrop = 25;
     const int PointDrop = 10;
+    const float TargetRadius = 45f; // mouse pick radius while choosing an ultimate target; roomier than the hit box
+    const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
+    const float HoverEaseTime = 0.12f;
 
     public Vector2 Center;
     DemonState state = DemonState.Idle;
     float animElapsed;
     float fireCooldown;
     bool SelectedForUlt = false;
+    float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
     // Shots already in flight outlive the demon that fired them; they only vanish off-screen or on hit.
     readonly List<EnemyProjectile> projectiles = [];
 
@@ -28,6 +32,8 @@ class Demon
         new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
 
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
+    /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
+    public bool IsUnderCursor(Vector2 p) => Raylib.CheckCollisionPointCircle(p, Center, TargetRadius);
     public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
     public int ScorePoint => PointDrop;
 
@@ -69,6 +75,13 @@ class Demon
 
     public void ClearProjectiles() => projectiles.Clear();
 
+    /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the demon is frozen.</summary>
+    public void UpdateHover(bool hovered, float dt)
+    {
+        float step = dt / HoverEaseTime;
+        hoverLevel = hovered ? Math.Min(1f, hoverLevel + step) : Math.Max(0f, hoverLevel - step);
+    }
+
     /// <param name="holdFire">Freezes shooting and any projectiles in flight (animation still plays), e.g. during the player's ultimate.</param>
     public void Update(float dt, Player player, bool holdFire = false)
     {
@@ -105,7 +118,14 @@ class Demon
         int frame = state == DemonState.Dying
             ? strip.OneShotFrame(animElapsed, DeathDuration)
             : strip.LoopFrame(animElapsed, IdleFps);
-        strip.Draw(frame, Center, DrawSize);
+        float hover = hoverLevel * hoverLevel * (3f - 2f * hoverLevel); // smoothstep
+        if (hover > 0)
+        {
+            // Ring under the sprite so the pick target reads even before the scale-up finishes.
+            float ring = TargetRadius + 6f * hover;
+            Raylib.DrawRing(Center, ring - 3f, ring, 0, 360, 48, Raylib.Fade(Color.Yellow, 0.8f * hover));
+        }
+        strip.Draw(frame, Center, DrawSize * (1f + HoverScale * hover));
         foreach (var p in projectiles) p.Draw();
     }
 }
