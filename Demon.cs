@@ -1,10 +1,13 @@
 using System.Numerics;
 using Raylib_cs;
 
-class Demon
+enum EnemyAttackTypes { Ranged, Melee, Both }
+
+class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged)
 {
     // Debug values
-    const bool EnemyAttack = false;
+    /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
+    public static bool AggroEnabled = true;
     //
     const float Radius = 25f;
     const float DrawSize = 110f;
@@ -12,12 +15,9 @@ class Demon
     const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
     const float FireInterval = 2f; // seconds between shots while alive
-    const float PowerDrop = 25;
-    const int PointDrop = 10;
     const float TargetRadius = 45f; // mouse pick radius while choosing an ultimate target; roomier than the hit box
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
-
     public Vector2 Center;
     DemonState state = DemonState.Idle;
     float animElapsed;
@@ -27,6 +27,8 @@ class Demon
     // Shots already in flight outlive the demon that fired them; they only vanish off-screen or on hit.
     readonly List<EnemyProjectile> projectiles = [];
 
+    // Attributes
+    public float CurrentHp = health;
     public bool IsAlive => state == DemonState.Idle;
     public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
@@ -38,7 +40,8 @@ class Demon
     /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
     public bool IsUnderCursor(Vector2 p) => Raylib.CheckCollisionPointCircle(p, Center, TargetRadius);
     public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
-    public int ScorePoint => PointDrop;
+    public int ScorePoint => pointDrop;
+    public float MeleeDamage => meleeDamage;
 
     public bool IsSelectedForUlt => SelectedForUlt;
     public void SelectForUlt()
@@ -56,7 +59,7 @@ class Demon
         animElapsed = 0;
         if (!player.IsUsingUltimate)
         {
-            player.ReceivePower(PowerDrop);
+            player.ReceivePower(powerDrop);
         }
         else
         {
@@ -91,12 +94,12 @@ class Demon
         animElapsed += dt;
         if (holdFire) return;
 
-        if (IsAlive && EnemyAttack)
+        if (IsAlive && AggroEnabled && (attackType.Equals(EnemyAttackTypes.Both) || attackType.Equals(EnemyAttackTypes.Ranged)))
         {
             fireCooldown -= dt;
             if (fireCooldown <= 0)
             {
-                projectiles.Add(new EnemyProjectile(Center, player.Center));
+                projectiles.Add(new EnemyProjectile(Center, player.Center, rangedDamage));
                 fireCooldown += FireInterval;
             }
         }

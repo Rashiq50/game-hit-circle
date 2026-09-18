@@ -1,13 +1,13 @@
 using System.Numerics;
 using Raylib_cs;
 
-class EnemyProjectile(Vector2 from, Vector2 toward)
+class EnemyProjectile(Vector2 from, Vector2 toward, float damage)
 {
     const float Speed = 400f;
     const float Radius = 15f;
     const float DrawSize = 34f;
 
-    const float damage = 12;
+    // const float damage = 12;
 
     public float GetDamageNumber() => damage;
 

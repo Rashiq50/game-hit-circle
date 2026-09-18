@@ -20,7 +20,7 @@ class Player
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
-    const int AttackReach = 20; // how far the swing extends the hit box in the facing direction
+    const int AttackReach = 20;
 
     /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
     Rectangle GetAttackingBoundBox() => facing switch

@@ -38,6 +38,7 @@ class Game
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F1)) showCollision = !showCollision;
         if (Raylib.IsKeyPressed(KeyboardKey.F2)) showHitBoxes = !showHitBoxes;
+        if (Raylib.IsKeyPressed(KeyboardKey.F3)) Demon.AggroEnabled = !Demon.AggroEnabled;
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
         {
@@ -139,7 +140,7 @@ class Game
     {
         if (demons.Count < MaxEnemies)
         {
-            Demon demon = new Demon();
+            Demon demon = new Demon(25, 10, 12, 0, 60, EnemyAttackTypes.Ranged);
             demons.Add(demon);
             demon.ClearProjectiles();
             demon.Respawn(player);
@@ -415,6 +416,8 @@ class Game
         DrawHealthBar();
         DrawUltimateBar();
         DrawUltimateHint();
+        if (!Demon.AggroEnabled)
+            Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, ScreenMargin + 28, 18, Color.Orange);
     }
 
     void DrawUltimateHint()
