@@ -28,7 +28,8 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     readonly List<EnemyProjectile> projectiles = [];
 
     // Attributes
-    public float CurrentHp = health;
+    public float CurrentHp = health - 0;
+    public float HealthFraction => Math.Clamp(CurrentHp / health, 0f, 1f);
     public bool IsAlive => state == DemonState.Idle;
     public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
@@ -134,6 +135,22 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
             Raylib.DrawRing(Center, ring - 3f, ring, 0, 360, 48, Raylib.Fade(Color.Yellow, 0.8f * hover));
         }
         strip.Draw(frame, Center, DrawSize * (1f + HoverScale * hover));
+        if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
+    }
+
+    /// <summary>Small bar floating just above the sprite; only shown while alive.</summary>
+    void DrawHealthBar()
+    {
+        const float barWidth = 44f;
+        const float barHeight = 5f;
+        const float gap = 4f; // space between the sprite top and the bar
+        float x = Center.X - barWidth / 2;
+        float y = Center.Y - DrawSize / 2 - gap - barHeight;
+        var bg = new Rectangle(x, y, barWidth, barHeight);
+        var fill = new Rectangle(x, y, barWidth * HealthFraction, barHeight);
+        Raylib.DrawRectangleRec(bg, Raylib.Fade(Color.Black, 0.6f));
+        Raylib.DrawRectangleRec(fill, HealthFraction > 0.5f ? Color.Lime : HealthFraction > 0.25f ? Color.Orange : Color.Red);
+        Raylib.DrawRectangleLinesEx(bg, 1, Raylib.Fade(Color.White, 0.7f));
     }
 }

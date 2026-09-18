@@ -40,6 +40,8 @@ class Player
     public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, Size, Size);
     public bool IsAttacking => state == PlayerState.Attacking;
     public bool IsUsingUltimate => IsUltimate;
+    public float GetUltimateDamage => 250;
+    public float GetMeleeDamage => 20;
     /// <summary>True only during the Update in which the swing reaches its impact frame.</summary>
     public bool SwingLanded { get; private set; }
 

@@ -266,30 +266,30 @@ class Game
         SpawnEnemies();
 
         var demon = demons.Find(d => d.Overlaps(player));
-        if (demon != null)
+
+        if (demon != null && demon.IsAlive && player.SwingLanded)
         {
-            if (demon.IsAlive && player.SwingLanded)
+            float damage = player.IsUsingUltimate ? player.GetUltimateDamage : player.GetMeleeDamage;
+            if (Math.Max(0, demon.CurrentHp - damage) <= 0)
             {
-                if (Math.Min(0, demon.CurrentHp - 20) <= 0)
-                {
-                    demon.Kill(player);
-                    SaveProgress();
-                }
-                demon.ReceiveDamage(20);
+                demon.Kill(player);
+                SaveProgress();
                 Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
                 Raylib.PlaySound(Assets.ScoreSound);
                 popup.Show(demon.Center, demon.ScorePoint);
             }
-            // if (demon.IsDead)
-            // {
-            //     Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-            //     Raylib.PlaySound(Assets.ScoreSound);
-            //     popup.Show(demon.Center, demon.ScorePoint);
-            //     // demon.Respawn(player);
-            //     // endTime = Raylib.GetTime() + PlayTime + bonusTime;
-            //     // bonusTime = 0;
-            // }
+            demon.ReceiveDamage(damage);
         }
+        // if (demon.IsDead)
+        // {
+        //     Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+        //     Raylib.PlaySound(Assets.ScoreSound);
+        //     popup.Show(demon.Center, demon.ScorePoint);
+        //     // demon.Respawn(player);
+        //     // endTime = Raylib.GetTime() + PlayTime + bonusTime;
+        //     // bonusTime = 0;
+        // }
+
 
         foreach (var dm in demons)
         {
