@@ -2,38 +2,56 @@ using System.Numerics;
 using Raylib_cs;
 
 /// <summary>
-/// The play area in fixed virtual units. Gameplay code positions everything in this space and never looks at the
-/// window size; the camera scales the world to fit the window (letterboxed) so coordinates in stage data stay valid.
+/// The play area in fixed virtual units: the whole castle floor, matching the background image and the Tiled map
+/// pixel for pixel. Gameplay code positions everything in this space and never looks at the window size; the camera
+/// shows a <see cref="ViewWidth"/> x <see cref="ViewHeight"/> window onto it that follows the player.
 /// </summary>
 static class World
 {
-    public const int Width = 1000;
-    public const int Height = 600;
+    public const int Tile = 32; // canonical tile size; walls and doors in the map sit on this grid
+    public const int Width = 125 * Tile;
+    public const int Height = 75 * Tile;
+    /// <summary>How much of the world is on screen at once (32 x 20 tiles). Smaller = closer camera, bigger sprites.</summary>
+    public const int ViewWidth = 28 * Tile;
+    public const int ViewHeight = 16 * Tile;
+    const float FollowRate = 6f; // how quickly the camera closes on the player, per second; higher is tighter
     const int SpawnMargin = 50;
     const int SpawnClearance = 60; // spawn box must fit the player (40) and demon (50) hit boxes
 
     public static readonly Vector2 Center = new(Width / 2f, Height / 2f);
     public static Camera2D Camera = new() { Target = Center, Zoom = 1f };
+    static Vector2 followPoint = Center; // where the follow camera is looking right now; eases toward the player
+
+    /// <summary>Eases the camera toward <paramref name="point"/> (the player); frame-rate independent.</summary>
+    public static void Follow(Vector2 point, float dt) =>
+        followPoint = Vector2.Lerp(followPoint, point, 1f - MathF.Exp(-FollowRate * dt));
+
+    /// <summary>Puts the camera straight onto <paramref name="point"/>, for spawns and restarts so it never pans across the map.</summary>
+    public static void SnapTo(Vector2 point) => followPoint = point;
 
     /// <summary>
-    /// Largest uniform zoom that keeps the whole world visible, centred in the window. While a <see cref="CameraFocus"/>
-    /// is running the view zooms in and pans onto the focus point instead, keeping the edges of the world off-screen.
+    /// With <paramref name="follow"/> the camera shows a view-sized window centred on the follow point, never reaching past
+    /// the world's edges (which would show black); otherwise it fits the whole world in the window (menus). While a
+    /// <see cref="CameraFocus"/> is running the view zooms in and pans onto the focus point instead.
     /// </summary>
-    public static void FitCamera(Vector2 shake)
+    public static void FitCamera(Vector2 shake, bool follow)
     {
-        float fitZoom = Math.Min(Screen.Width / (float)Width, Screen.Height / (float)Height);
         Camera.Offset = new Vector2(Screen.Width / 2f, Screen.Height / 2f);
+        float fitZoom = follow
+            ? Math.Min(Screen.Width / (float)ViewWidth, Screen.Height / (float)ViewHeight)
+            : Math.Min(Screen.Width / (float)Width, Screen.Height / (float)Height);
 
         float focus = CameraFocus.Amount;
         Camera.Zoom = fitZoom * float.Lerp(1f, CameraFocus.Zoom, focus);
 
-        // Clamp so the zoomed-in view never reaches past the world's edges (which would show black).
         var halfView = new Vector2(Screen.Width, Screen.Height) / (2f * Camera.Zoom);
-        var focusTarget = new Vector2(
-            halfView.X >= Width / 2f ? Center.X : Math.Clamp(CameraFocus.Point.X, halfView.X, Width - halfView.X),
-            halfView.Y >= Height / 2f ? Center.Y : Math.Clamp(CameraFocus.Point.Y, halfView.Y, Height - halfView.Y));
-        Camera.Target = Vector2.Lerp(Center, focusTarget, focus) + shake;
+        Vector2 target = Vector2.Lerp(follow ? followPoint : Center, CameraFocus.Point, focus);
+        Camera.Target = ClampToWorld(target, halfView) + shake;
     }
+
+    static Vector2 ClampToWorld(Vector2 target, Vector2 halfView) => new(
+        halfView.X >= Width / 2f ? Center.X : Math.Clamp(target.X, halfView.X, Width - halfView.X),
+        halfView.Y >= Height / 2f ? Center.Y : Math.Clamp(target.Y, halfView.Y, Height - halfView.Y));
 
     /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
     public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);

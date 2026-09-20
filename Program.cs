@@ -25,7 +25,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
     game.Update(Raylib.GetFrameTime());
     Raylib.BeginDrawing();
     Raylib.ClearBackground(Color.Black);
-    World.FitCamera(game.ShakeOffset); // every frame: the window may have been resized
+    World.FitCamera(game.ShakeOffset, game.CameraFollowsPlayer); // every frame: the window may have been resized
     if (game.BlurWorld) BlurEffect.Begin();
     Raylib.BeginMode2D(World.Camera);
     game.DrawWorld();

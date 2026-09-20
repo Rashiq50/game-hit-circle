@@ -9,6 +9,8 @@ class Game
     const int ScreenMargin = 40;
     const float EnemyCooldown = 2.0f;
     public void Shake() => shakeTimeLeft = ShakeDuration;
+    /// <summary>Menus show the whole map; once a round starts the camera tracks the player (and holds there on game over).</summary>
+    public bool CameraFollowsPlayer => state is not (GameState.Welcome or GameState.MainMenu);
 
     public Vector2 ShakeOffset => shakeTimeLeft > 0
         ? new Vector2(Random.Shared.NextSingle() * 2 - 1, Random.Shared.NextSingle() * 2 - 1) * ShakeStrength
@@ -188,6 +190,7 @@ class Game
         score = 0;
         highScore = checkpoint.HighScore;
         player.Reset();
+        World.SnapTo(player.Center);
         ResetPowers();
         CancelUltimateSequence();
         BeginStage();
@@ -200,6 +203,7 @@ class Game
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
+        World.SnapTo(player.Center);
         ResetPowers();
         CancelUltimateSequence();
         BeginStage();
@@ -301,6 +305,7 @@ class Game
     {
         shakeTimeLeft = Math.Max(0, shakeTimeLeft - dt);
         CameraFocus.Update(dt);
+        World.Follow(player.Center, dt);
         UpdateBanner(dt);
         UpdateUltimateSequence();
         if (player.PlayerCurrentHp <= 0)
