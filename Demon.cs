@@ -9,17 +9,26 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
     public static bool AggroEnabled = true;
     //
-    const float Radius = 25f;
+    const float SpriteRadius = 25f; // hit box of the sprite look; the strip has a lot of transparent padding around the body
     const float DrawSize = 110f;
-    const float IconRadius = 30f; // body radius for the primitive-drawn looks; roughly the sprite's visible bulk
+    const float IconRadius = 30f; // base body radius for the primitive-drawn looks; roughly the sprite's visible bulk
+    const float TargetMargin = 15f; // how far past the hit box the ultimate pick radius reaches
+    const float MinTargetRadius = 45f; // so small looks are still comfortable to click
     const float IdleFps = 12f;
     const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
     const float FireInterval = 2f; // seconds between shots while alive
-    const float TargetRadius = 45f; // mouse pick radius while choosing an ultimate target; roomier than the hit box
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
     public Vector2 Center;
+    // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
+    readonly Vector2 halfSize = look == EnemyLook.Sprite
+        ? new(SpriteRadius, SpriteRadius)
+        : EnemyIcons.HitExtent(look) * IconRadius * EnemyIcons.BodyScale(look);
+    /// <summary>Distance from the centre to the top of the drawing, decorations included.</summary>
+    readonly float visualTop = look == EnemyLook.Sprite ? DrawSize / 2 : EnemyIcons.TopExtent(look) * IconRadius * EnemyIcons.BodyScale(look);
+    /// <summary>Mouse pick radius while choosing an ultimate target; roomier than the hit box so it's easy to land on.</summary>
+    float TargetRadius => Math.Max(MinTargetRadius, Math.Max(halfSize.X, halfSize.Y) + TargetMargin);
     DemonState state = DemonState.Idle;
     float animElapsed;
     float fireCooldown;
@@ -35,8 +44,8 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
 
-    static Rectangle BoundsAt(Vector2 center) =>
-        new(center.X - Radius, center.Y - Radius, Radius * 2, Radius * 2);
+    Rectangle BoundsAt(Vector2 center) =>
+        new(center.X - halfSize.X, center.Y - halfSize.Y, halfSize.X * 2, halfSize.Y * 2);
 
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
     /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
@@ -157,7 +166,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         const float barHeight = 5f;
         const float gap = 4f; // space between the sprite top and the bar
         float x = Center.X - barWidth / 2;
-        float y = Center.Y - DrawSize / 2 - gap - barHeight;
+        float y = Center.Y - visualTop - gap - barHeight;
         var bg = new Rectangle(x, y, barWidth, barHeight);
         var fill = new Rectangle(x, y, barWidth * HealthFraction, barHeight);
         Raylib.DrawRectangleRec(bg, Raylib.Fade(Color.Black, 0.6f));

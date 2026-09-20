@@ -12,16 +12,53 @@ static class EnemyIcons
     /// <param name="alpha">Whole-body opacity, 1 = solid; the death fade lowers it.</param>
     public static void Draw(EnemyLook look, Vector2 c, float radius, float time, float alpha)
     {
+        float r = radius * BodyScale(look);
         switch (look)
         {
-            case EnemyLook.Imp: DrawImp(c, radius * 0.75f, time, alpha); break;
-            case EnemyLook.Brute: DrawBrute(c, radius * 1.25f, time, alpha); break;
-            case EnemyLook.Tank: DrawTank(c, radius * 1.3f, time, alpha); break;
-            case EnemyLook.Sniper: DrawSniper(c, radius, time, alpha); break;
-            case EnemyLook.Warlord: DrawWarlord(c, radius * 1.5f, time, alpha); break;
-            case EnemyLook.Wisp: DrawWisp(c, radius * 0.8f, time, alpha); break;
+            case EnemyLook.Imp: DrawImp(c, r, time, alpha); break;
+            case EnemyLook.Brute: DrawBrute(c, r, time, alpha); break;
+            case EnemyLook.Tank: DrawTank(c, r, time, alpha); break;
+            case EnemyLook.Sniper: DrawSniper(c, r, time, alpha); break;
+            case EnemyLook.Warlord: DrawWarlord(c, r, time, alpha); break;
+            case EnemyLook.Wisp: DrawWisp(c, r, time, alpha); break;
         }
     }
+
+    /// <summary>How much bigger or smaller each look draws itself than the base radius, so a tank reads bigger than an imp.</summary>
+    public static float BodyScale(EnemyLook look) => look switch
+    {
+        EnemyLook.Imp => 0.75f,
+        EnemyLook.Brute => 1.25f,
+        EnemyLook.Tank => 1.3f,
+        EnemyLook.Warlord => 1.5f,
+        EnemyLook.Wisp => 0.8f,
+        _ => 1f,
+    };
+
+    /// <summary>Half-size of the solid part of each look's silhouette, as a multiple of its scaled body radius. Horns, crowns, auras
+    /// and glows are left out so hits land where the body looks solid; a tall sniper gets a tall box, a wide brute a wide one.</summary>
+    public static Vector2 HitExtent(EnemyLook look) => look switch
+    {
+        EnemyLook.Imp => new(1f, 1f), // diamond corners sit on the axes
+        EnemyLook.Brute => new(1.05f, 0.9f), // hexagon corners left and right, plus a little for the fists
+        EnemyLook.Tank => new(0.95f, 0.95f), // octagon on a flat edge
+        EnemyLook.Sniper => new(0.5f, 1.35f),
+        EnemyLook.Wisp => new(0.8f, 0.8f), // core and orbiting motes; the outer glow isn't solid
+        _ => new(1f, 1f), // Warlord: the orb, not the crown or aura
+    };
+
+    /// <summary>How far above the centre each look's drawing reaches, decorations included, as a multiple of its scaled body
+    /// radius; used to float things like the health bar clear of the sprite.</summary>
+    public static float TopExtent(EnemyLook look) => look switch
+    {
+        EnemyLook.Imp => 1.4f, // horn tips
+        EnemyLook.Brute => 0.95f,
+        EnemyLook.Tank => 1f,
+        EnemyLook.Sniper => 1.35f,
+        EnemyLook.Warlord => 1.25f, // crown and aura
+        EnemyLook.Wisp => 1.5f, // outer glow
+        _ => 1f,
+    };
 
     /// <summary>Small orange diamond with horns, jittering in place: fragile and quick.</summary>
     static void DrawImp(Vector2 c, float r, float t, float a)

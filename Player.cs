@@ -27,8 +27,8 @@ class Player
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
-    const int LightAttackReach = 20;
-    const int HeavyAttackReach = 40;
+    const int LightAttackReach = 30;
+    const int HeavyAttackReach = 50;
     int AttackReach => attackKind == AttackKind.Heavy ? HeavyAttackReach : LightAttackReach;
 
     /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
