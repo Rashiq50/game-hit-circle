@@ -110,6 +110,7 @@ class Game
     void DrawHitBoxes()
     {
         Raylib.DrawRectangleLinesEx(player.Bounds, 2, Color.Lime);
+        Raylib.DrawRectangleLinesEx(player.AttackBounds, 2, Color.DarkPurple);
         foreach (var demon in demons)
             Raylib.DrawRectangleLinesEx(demon.Bounds, 2, demon.IsAlive ? Color.Red : Color.Gray);
     }

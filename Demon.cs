@@ -50,7 +50,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
     /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
     public bool IsUnderCursor(Vector2 p) => Raylib.CheckCollisionPointCircle(p, Center, TargetRadius);
-    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
+    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.AttackBounds);
     public int ScorePoint => pointDrop;
     public float MeleeDamage => meleeDamage;
 

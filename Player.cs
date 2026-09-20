@@ -27,17 +27,17 @@ class Player
     public float HealthFraction => Math.Clamp(PlayerCurrentHp / PlayerHealth, 0f, 1f);
     public float PowerFraction => Math.Clamp(PlayerUlti / 100, 0f, 1f);
 
-    const int LightAttackReach = 30;
-    const int HeavyAttackReach = 50;
+    const int LightAttackReach = 40;
+    const int HeavyAttackReach = 60;
     int AttackReach => attackKind == AttackKind.Heavy ? HeavyAttackReach : LightAttackReach;
 
-    /// <summary>The movement box grown by <see cref="AttackReach"/> on the side the player is facing.</summary>
+    /// <summary>Rectangle used for melee collision and debugging; keeps the hitbox aligned with the facing direction.</summary>
     Rectangle GetAttackingBoundBox() => facing switch
     {
-        Direction.Left => new Rectangle(position.X - AttackReach, position.Y, SizeX + AttackReach, SizeY),
-        Direction.Right => new Rectangle(position.X, position.Y, SizeX + AttackReach, SizeY),
-        Direction.Up => new Rectangle(position.X, position.Y - AttackReach, SizeX, SizeY + AttackReach),
-        Direction.Down => new Rectangle(position.X, position.Y, SizeX, SizeY + AttackReach),
+        Direction.Left => new Rectangle(position.X - AttackReach, position.Y - (SizeY / 2f), AttackReach, SizeY + SizeY),
+        Direction.Right => new Rectangle(position.X + SizeX, position.Y - (SizeY / 2f), AttackReach, SizeY + SizeY),
+        Direction.Up => new Rectangle(position.X - (SizeX / 2f), position.Y - AttackReach, SizeX + SizeX, AttackReach),
+        Direction.Down => new Rectangle(position.X - (SizeX / 2f), position.Y + SizeY, SizeX + SizeX, AttackReach),
         _ => new Rectangle(position.X, position.Y, SizeX, SizeY),
     };
 
@@ -48,7 +48,8 @@ class Player
     Direction facing = Direction.Down;
     float animElapsed;
     AttackKind attackKind;
-    public Rectangle Bounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, SizeX, SizeY);
+    public Rectangle Bounds => new Rectangle(position.X, position.Y, SizeX, SizeY);
+    public Rectangle AttackBounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, SizeX, SizeY);
     public bool IsAttacking => state == PlayerState.Attacking;
     public bool IsUsingUltimate => IsUltimate;
     public float GetUltimateDamage => 250;
@@ -210,5 +211,8 @@ class Player
         }
     }
 
-    public void Draw() => Strip.Draw(CurrentFrame, Center, DrawSize);
+    public void Draw()
+    {
+        Strip.Draw(CurrentFrame, Center, DrawSize);
+    }
 }
