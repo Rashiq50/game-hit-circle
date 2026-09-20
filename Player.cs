@@ -6,7 +6,7 @@ class Player
     const int SizeX = 30;
     const int SizeY = 40;
     const float Speed = 300f;
-    const float BoostMultiplier = 2.5f;
+    const float BoostMultiplier = 1.8f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
     // Both attacks play the same axe strip; the speed is what makes one feel quick and the other committed.
