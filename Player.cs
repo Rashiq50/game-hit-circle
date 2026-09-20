@@ -139,17 +139,20 @@ class Player
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
-    /// <param name="obstacles">Solid boxes besides the walls (live enemies); the player slides along them like walls.</param>
     public void Update(float dt, IReadOnlyList<Rectangle> obstacles)
     {
         SwingLanded = false;
-        if (IsAttacking)
+        bool attacking = IsAttacking;
+
+        if (attacking)
         {
             UpdateAttack(dt);
-            return;
+        }
+        else
+        {
+            animElapsed += dt;
         }
 
-        animElapsed += dt;
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
         float step = (boosting ? Speed * BoostMultiplier : Speed) * dt;
 
@@ -161,11 +164,17 @@ class Player
         // Normalise so diagonals cover the same distance per second as straight lines.
         Vector2 move = dir == Vector2.Zero ? Vector2.Zero : Vector2.Normalize(dir) * step;
 
+        if (attacking)
+        {
+            TryMove(new Vector2(move.X, 0), obstacles);
+            TryMove(new Vector2(0, move.Y), obstacles);
+            return;
+        }
+
         state = move == Vector2.Zero ? PlayerState.Idle
               : boosting ? PlayerState.Running
               : PlayerState.Walking;
 
-        // Resolve each axis on its own so a wall only stops the component pushing into it and the player slides along it.
         TryMove(new Vector2(move.X, 0), obstacles);
         TryMove(new Vector2(0, move.Y), obstacles);
     }
