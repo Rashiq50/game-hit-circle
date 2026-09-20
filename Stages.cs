@@ -6,28 +6,30 @@ record EnemyDef(
     float RangedDamage,
     float MeleeDamage,
     EnemyAttackTypes AttackType = EnemyAttackTypes.Ranged,
-    float ProjectileSpeed = 280f)
+    float ProjectileSpeed = 280f,
+    EnemyLook Look = EnemyLook.Sprite)
 {
-    public Demon Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed);
+    public Demon Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, Look);
 }
 
-/// <summary>The enemy variants stages are built from. Tune a variant here and every stage using it follows.</summary>
+/// <summary>The enemy variants stages are built from. Tune a variant here and every stage using it follows.
+/// Only the Grunt has real art; the rest borrow a primitive body from <see cref="EnemyIcons"/> so they can be told apart.</summary>
 static class Enemies
 {
     /// <summary>Baseline ranged demon; the one the game has had so far.</summary>
     public static readonly EnemyDef Grunt = new(Health: 60, PointDrop: 10, PowerDrop: 25, RangedDamage: 12, MeleeDamage: 0);
     /// <summary>Fragile and cheap; fodder to pad early stages.</summary>
-    public static readonly EnemyDef Imp = new(Health: 30, PointDrop: 5, PowerDrop: 15, RangedDamage: 8, MeleeDamage: 0, ProjectileSpeed: 320f);
+    public static readonly EnemyDef Imp = new(Health: 30, PointDrop: 5, PowerDrop: 15, RangedDamage: 8, MeleeDamage: 0, ProjectileSpeed: 320f, Look: EnemyLook.Imp);
     /// <summary>Melee only; harmless at range but hurts on contact.</summary>
-    public static readonly EnemyDef Brute = new(Health: 90, PointDrop: 15, PowerDrop: 30, RangedDamage: 0, MeleeDamage: 20, AttackType: EnemyAttackTypes.Melee);
+    public static readonly EnemyDef Brute = new(Health: 90, PointDrop: 15, PowerDrop: 30, RangedDamage: 0, MeleeDamage: 20, AttackType: EnemyAttackTypes.Melee, Look: EnemyLook.Brute);
     /// <summary>Bullet sponge; slow shots, big payout.</summary>
-    public static readonly EnemyDef Tank = new(Health: 180, PointDrop: 30, PowerDrop: 40, RangedDamage: 15, MeleeDamage: 0, ProjectileSpeed: 220f);
+    public static readonly EnemyDef Tank = new(Health: 180, PointDrop: 30, PowerDrop: 40, RangedDamage: 15, MeleeDamage: 0, ProjectileSpeed: 220f, Look: EnemyLook.Tank);
     /// <summary>Fast, hard-hitting shots on a normal body.</summary>
-    public static readonly EnemyDef Sniper = new(Health: 50, PointDrop: 20, PowerDrop: 25, RangedDamage: 25, MeleeDamage: 0, ProjectileSpeed: 420f);
+    public static readonly EnemyDef Sniper = new(Health: 50, PointDrop: 20, PowerDrop: 25, RangedDamage: 25, MeleeDamage: 0, ProjectileSpeed: 420f, Look: EnemyLook.Sniper);
     /// <summary>Shoots and hits back in melee; the stage-closer.</summary>
-    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackTypes.Both);
+    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackTypes.Both, Look: EnemyLook.Warlord);
     /// <summary>Weak, but killing it fills a big chunk of the ultimate bar.</summary>
-    public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 300f);
+    public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 300f, Look: EnemyLook.Wisp);
 }
 
 /// <summary>What a stage throws at the player. Add fields here (layout, spawn cadence, ...) rather than special-casing in Game.</summary>

@@ -3,7 +3,7 @@ using Raylib_cs;
 
 enum EnemyAttackTypes { Ranged, Melee, Both }
 
-class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged, float projectileSpeed = 280f)
+class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite)
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
@@ -11,6 +11,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     //
     const float Radius = 25f;
     const float DrawSize = 110f;
+    const float IconRadius = 30f; // body radius for the primitive-drawn looks; roughly the sprite's visible bulk
     const float IdleFps = 12f;
     const float DeathDuration = 0.4f;
     const int RespawnAttemptCap = 10;
@@ -123,10 +124,6 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void Draw()
     {
-        var strip = state == DemonState.Dying ? Assets.DemonDeath : Assets.DemonIdle;
-        int frame = state == DemonState.Dying
-            ? strip.OneShotFrame(animElapsed, DeathDuration)
-            : strip.LoopFrame(animElapsed, IdleFps);
         float hover = hoverLevel * hoverLevel * (3f - 2f * hoverLevel); // smoothstep
         if (hover > 0)
         {
@@ -134,7 +131,21 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
             float ring = TargetRadius + 6f * hover;
             Raylib.DrawRing(Center, ring - 3f, ring, 0, 360, 48, Raylib.Fade(Color.Yellow, 0.8f * hover));
         }
-        strip.Draw(frame, Center, DrawSize * (1f + HoverScale * hover));
+        float scale = 1f + HoverScale * hover;
+        if (look == EnemyLook.Sprite)
+        {
+            var strip = state == DemonState.Dying ? Assets.DemonDeath : Assets.DemonIdle;
+            int frame = state == DemonState.Dying
+                ? strip.OneShotFrame(animElapsed, DeathDuration)
+                : strip.LoopFrame(animElapsed, IdleFps);
+            strip.Draw(frame, Center, DrawSize * scale);
+        }
+        else
+        {
+            // No death strip for the primitive looks: they shrink and fade out over the same window instead.
+            float death = state == DemonState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
+            EnemyIcons.Draw(look, Center, IconRadius * scale * (1f - 0.5f * death), animElapsed, 1f - death);
+        }
         if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
     }
