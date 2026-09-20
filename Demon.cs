@@ -80,11 +80,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void Respawn(Player player)
     {
-        Vector2 candidate = World.RandomPoint();
-        for (int attempt = 0; attempt < RespawnAttemptCap && Raylib.CheckCollisionRecs(BoundsAt(candidate), player.Bounds); attempt++)
-            candidate = World.RandomPoint();
-
-        Center = candidate;
+        Center = World.RandomEnemySpawn(player.Bounds, RespawnAttemptCap);
         state = DemonState.Idle;
         animElapsed = 0;
         fireCooldown = FireInterval;

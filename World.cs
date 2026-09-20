@@ -14,6 +14,8 @@ static class World
     /// <summary>How much of the world is on screen at once (32 x 20 tiles). Smaller = closer camera, bigger sprites.</summary>
     public const int ViewWidth = 28 * Tile;
     public const int ViewHeight = 16 * Tile;
+    const int EnemySpawnWidth = 62 * Tile;
+    const int EnemySpawnHeight = 38 * Tile;
     const float FollowRate = 6f; // how quickly the camera closes on the player, per second; higher is tighter
     const int SpawnMargin = 50;
     const int SpawnClearance = 60; // spawn box must fit the player (40) and demon (50) hit boxes
@@ -56,14 +58,28 @@ static class World
     /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
     public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);
 
+    /// <summary>
+    /// A random enemy spawn point from the map; falls back to <see cref="RandomPoint"/> when the map has none.
+    /// Keeping clear of <paramref name="avoid"/> (the player) is best effort: with a few fixed points there may be no clear one.
+    /// </summary>
+    public static Vector2 RandomEnemySpawn(Rectangle avoid, int attempts = 10)
+    {
+        var spawns = CollisionMap.EnemySpawns;
+        if (spawns.Count == 0) return RandomPoint();
+        Vector2 p = spawns[Random.Shared.Next(spawns.Count)];
+        for (int i = 0; i < attempts && Raylib.CheckCollisionRecs(new Rectangle(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance), avoid); i++)
+            p = spawns[Random.Shared.Next(spawns.Count)];
+        return p;
+    }
+
     /// <summary>A random spot that leaves a <see cref="SpawnClearance"/> box around it clear of walls.</summary>
     public static Vector2 RandomPoint()
     {
         Vector2 p;
         do
         {
-            p = new(Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
-                    Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
+            p = new(Random.Shared.Next(SpawnMargin, EnemySpawnWidth - SpawnMargin),
+                    Random.Shared.Next(SpawnMargin, EnemySpawnHeight - SpawnMargin));
         } while (CollisionMap.Blocks(new Rectangle(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance)));
         return p;
     }

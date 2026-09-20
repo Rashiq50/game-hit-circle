@@ -43,7 +43,7 @@ class Player
 
     /// <summary>Offset from the hit box's top-left to its centre; the box is narrower than tall, so keep the axes apart.</summary>
     static readonly Vector2 HalfSize = new(SizeX / 2f, SizeY / 2f);
-    Vector2 position = World.RandomPoint() - HalfSize;
+    Vector2 position = CollisionMap.PlayerSpawn - HalfSize;
     PlayerState state = PlayerState.Idle;
     Direction facing = Direction.Down;
     float animElapsed;
@@ -83,7 +83,7 @@ class Player
 
     public void Reset()
     {
-        position = World.RandomPoint() - HalfSize;
+        position = CollisionMap.PlayerSpawn - HalfSize;
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
@@ -91,7 +91,7 @@ class Player
     }
     public void Resume(float health, float ulti)
     {
-        position = World.RandomPoint() - HalfSize;
+        position = CollisionMap.PlayerSpawn - HalfSize;
         state = PlayerState.Idle;
         PlayerCurrentHp = health;
         PlayerUlti = ulti;

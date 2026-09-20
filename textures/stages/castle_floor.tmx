@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="125" height="75" tilewidth="32" tileheight="32" infinite="0" nextlayerid="6" nextobjectid="38">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="125" height="75" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="74">
  <layer id="1" name="Tile Layer 1" width="125" height="75" visible="0">
   <data encoding="csv">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -80,13 +80,13 @@
 </data>
  </layer>
  <imagelayer id="3" name="bg">
-  <image source="H:/Projects/personal projects/windows/games/game-hit-circle/textures/stages/castle_floor.png" width="4000" height="2400"/>
+  <image source="castle_floor.png" width="4000" height="2400"/>
  </imagelayer>
- <objectgroup id="5" name="Object Layer 1">
-  <object id="2" x="-1.33333" y="2" width="322.667" height="2400.67"/>
-  <object id="3" x="321.091" y="2306.06" width="3682.06" height="96.455"/>
-  <object id="4" x="3680.45" y="1.57576" width="320.03" height="2298.42"/>
-  <object id="5" x="322" y="-2" width="3356" height="260"/>
+ <objectgroup id="5" name="Object Layer 1" visible="0">
+  <object id="2" name="Wall" x="-1.33333" y="2" width="322.667" height="2400.67"/>
+  <object id="3" name="Wall" x="321.091" y="2306.06" width="3682.06" height="96.455"/>
+  <object id="4" name="Wall" x="3680.45" y="1.57576" width="320.03" height="2298.42"/>
+  <object id="5" name="Wall" x="322" y="-2" width="3356" height="260"/>
   <object id="8" x="2277.67" y="277.667" width="43.6667" height="47">
    <ellipse/>
   </object>
@@ -97,27 +97,128 @@
   <object id="11" x="576.333" y="296.333" width="70.6667" height="130"/>
   <object id="12" x="767.667" y="296" width="72" height="130.333"/>
   <object id="13" x="960.333" y="296.667" width="70.3333" height="130.333"/>
-  <object id="16" x="321.25" y="801.5" width="317.75" height="255.333"/>
-  <object id="17" x="832.458" y="800.25" width="351.083" height="256.833"/>
-  <object id="18" x="1184" y="608" width="224.667" height="894.667"/>
-  <object id="19" x="322" y="1503.33" width="320" height="98"/>
-  <object id="20" x="321.333" y="1792.67" width="320" height="158"/>
-  <object id="21" x="832.667" y="1792.67" width="351.333" height="156.667"/>
-  <object id="22" x="1185.33" y="1792" width="318" height="510.667"/>
-  <object id="23" x="1504" y="1791.67" width="416.667" height="158.333"/>
-  <object id="24" x="2112.5" y="1790.5" width="381" height="162"/>
-  <object id="25" x="2817.5" y="1792.5" width="318.5" height="158.5"/>
-  <object id="26" x="3329.5" y="1793" width="348" height="160"/>
-  <object id="27" x="2494.67" y="1790.67" width="323.333" height="516.667"/>
-  <object id="28" x="1184.5" y="258.5" width="224.5" height="223"/>
-  <object id="29" x="830.667" y="1504.67" width="1092" height="96"/>
-  <object id="30" x="2110" y="1506.67" width="1026.67" height="92.6667"/>
-  <object id="31" x="3327.33" y="1504.67" width="349.333" height="96"/>
-  <object id="32" x="2590.67" y="260" width="226.667" height="221.333"/>
-  <object id="33" x="2816.67" y="799.333" width="320.667" height="257.333"/>
-  <object id="34" x="3331.33" y="800.667" width="346.667" height="255.333"/>
-  <object id="35" x="2591.33" y="608" width="224" height="896.667"/>
-  <object id="36" x="2112" y="991.333" width="477.333" height="512.667"/>
-  <object id="37" x="1410.67" y="992" width="511.333" height="510.667"/>
+  <object id="16" name="Wall" x="321.25" y="801.5" width="317.75" height="255.333"/>
+  <object id="17" name="Wall" x="832.458" y="800.25" width="351.083" height="256.833"/>
+  <object id="18" name="Wall" x="1184" y="608" width="224.667" height="894.667"/>
+  <object id="19" name="Wall" x="322" y="1503.33" width="320" height="98"/>
+  <object id="20" name="Wall" x="321.333" y="1792.67" width="320" height="158"/>
+  <object id="21" name="Wall" x="832.667" y="1792.67" width="351.333" height="156.667"/>
+  <object id="22" name="Wall" x="1185.33" y="1792" width="318" height="510.667"/>
+  <object id="23" name="Wall" x="1504" y="1791.67" width="416.667" height="158.333"/>
+  <object id="24" name="Wall" x="2112.5" y="1790.5" width="381" height="162"/>
+  <object id="25" name="Wall" x="2817.5" y="1792.5" width="318.5" height="158.5"/>
+  <object id="26" name="Wall" x="3329.5" y="1793" width="348" height="160"/>
+  <object id="27" name="Wall" x="2494.67" y="1790.67" width="323.333" height="516.667"/>
+  <object id="28" name="Wall" x="1184.5" y="258.5" width="224.5" height="223"/>
+  <object id="29" name="Wall" x="830.667" y="1504.67" width="1092" height="96"/>
+  <object id="30" name="Wall" x="2110" y="1506.67" width="1026.67" height="92.6667"/>
+  <object id="31" name="Wall" x="3327.33" y="1504.67" width="349.333" height="96"/>
+  <object id="32" name="Wall" x="2590.67" y="260" width="226.667" height="221.333"/>
+  <object id="33" name="Wall" x="2816.67" y="799.333" width="320.667" height="257.333"/>
+  <object id="34" name="Wall" x="3331.33" y="800.667" width="346.667" height="255.333"/>
+  <object id="35" name="Wall" x="2591.33" y="608" width="224" height="896.667"/>
+  <object id="36" name="Wall" x="2112" y="991.333" width="477.333" height="512.667"/>
+  <object id="37" name="Wall" x="1410.67" y="992" width="511.333" height="510.667"/>
+ </objectgroup>
+ <objectgroup id="6" name="SpawnLayers">
+  <object id="38" name="Player Spawn" x="2006.26" y="2230.38">
+   <point/>
+  </object>
+  <object id="40" name="EnemySpawn" x="1141" y="335">
+   <point/>
+  </object>
+  <object id="41" name="EnemySpawn" x="1130" y="754">
+   <point/>
+  </object>
+  <object id="42" name="EnemySpawn" x="401" y="742">
+   <point/>
+  </object>
+  <object id="44" name="EnemySpawn" x="1628" y="457.333">
+   <point/>
+  </object>
+  <object id="45" name="EnemySpawn" x="1634.67" y="641.333">
+   <point/>
+  </object>
+  <object id="46" name="EnemySpawn" x="1628" y="814.667">
+   <point/>
+  </object>
+  <object id="47" name="EnemySpawn" x="2376" y="449.333">
+   <point/>
+  </object>
+  <object id="48" name="EnemySpawn" x="2370.67" y="636">
+   <point/>
+  </object>
+  <object id="50" name="EnemySpawn" x="2370.67" y="820">
+   <point/>
+  </object>
+  <object id="51" name="EnemySpawn" x="464" y="1282.67">
+   <point/>
+  </object>
+  <object id="52" name="EnemySpawn" x="1085.33" y="1281.33">
+   <point/>
+  </object>
+  <object id="53" name="EnemySpawn" x="450.667" y="1989.33">
+   <point/>
+  </object>
+  <object id="54" name="EnemySpawn" x="1005.33" y="1986.67">
+   <point/>
+  </object>
+  <object id="55" name="EnemySpawn" x="548" y="2200">
+   <point/>
+  </object>
+  <object id="56" name="EnemySpawn" x="680" y="2186.67">
+   <point/>
+  </object>
+  <object id="57" name="EnemySpawn" x="789.333" y="2184">
+   <point/>
+  </object>
+  <object id="58" name="EnemySpawn" x="904" y="2184">
+   <point/>
+  </object>
+  <object id="59" name="EnemySpawn" x="2953.33" y="2253.33">
+   <point/>
+  </object>
+  <object id="60" name="EnemySpawn" x="3148" y="2249.33">
+   <point/>
+  </object>
+  <object id="61" name="EnemySpawn" x="3466.67" y="2228">
+   <point/>
+  </object>
+  <object id="62" name="EnemySpawn" x="3334.67" y="2166.67">
+   <point/>
+  </object>
+  <object id="63" name="EnemySpawn" x="2961.33" y="1200">
+   <point/>
+  </object>
+  <object id="64" name="EnemySpawn" x="3156" y="1196">
+   <point/>
+  </object>
+  <object id="65" name="EnemySpawn" x="3341.33" y="1196">
+   <point/>
+  </object>
+  <object id="66" name="EnemySpawn" x="3534.67" y="1382.67">
+   <point/>
+  </object>
+  <object id="67" name="EnemySpawn" x="3137.33" y="1386.67">
+   <point/>
+  </object>
+  <object id="68" name="EnemySpawn" x="2934.67" y="329.333">
+   <point/>
+  </object>
+  <object id="69" name="EnemySpawn" x="3554.67" y="337.333">
+   <point/>
+  </object>
+  <object id="70" name="EnemySpawn" x="3632" y="466.667">
+   <point/>
+  </object>
+  <object id="71" name="EnemySpawn" x="3636" y="597.333">
+   <point/>
+  </object>
+  <object id="72" name="EnemySpawn" x="3506.67" y="716">
+   <point/>
+  </object>
+  <object id="73" name="EnemySpawn" x="2948" y="696">
+   <point/>
+  </object>
  </objectgroup>
 </map>
