@@ -548,8 +548,10 @@ class Game
     void DrawHud()
     {
         DrawBanner();
-        Raylib.DrawText($"Score: {score}", ScreenMargin, ScreenMargin, 22, Color.White);
-        Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, 22, Color.Gold);
+        const int scoreFontSize = 22;
+        HudIcons.DrawCoin(new Rectangle(ScreenMargin - 6, ScreenMargin - 6, scoreFontSize + 12, scoreFontSize + 12), Color.Gold);
+        Raylib.DrawText($"{score}", ScreenMargin + scoreFontSize + 6, ScreenMargin, scoreFontSize, Color.White);
+        // Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, scoreFontSize, Color.Gold);
         int demonsLeft = CurrentStage.TotalEnemies - spawned + demons.Count(d => d.IsAlive);
         Raylib.DrawText($"Stage {stage}/{Stages.Count}   Demons left: {demonsLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
@@ -577,14 +579,22 @@ class Game
             Screen.DrawCenteredText("[F] Ultimate ready", y, fontSize, Color.Yellow);
     }
 
+    const int BarIconSize = 28; // icon slot beside the health and ultimate bars, slightly taller than the bar itself
+    const int BarIconGap = 4;
+
+    /// <summary>Icon slot centred on a bar of <paramref name="barHeight"/> at the left screen margin.</summary>
+    static Rectangle BarIconSlot(int barY, int barHeight) =>
+        new(ScreenMargin, barY + (barHeight - BarIconSize) / 2f, BarIconSize, BarIconSize);
+
     void DrawHealthBar()
     {
         const int barWidth = 200;
         const int barHeight = 20;
-        int x = ScreenMargin;
+        int x = ScreenMargin + BarIconSize + BarIconGap;
         int y = Screen.Height - ScreenMargin - barHeight;
         int fill = (int)(barWidth * player.HealthFraction);
 
+        HudIcons.DrawHeart(BarIconSlot(y, barHeight), Color.Red);
         Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
         Raylib.DrawRectangle(x, y, fill, barHeight, Color.Red);
         Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
@@ -595,10 +605,11 @@ class Game
         const int barWidth = 200;
         const int barHeight = 20;
         const int margin = ScreenMargin + 25;
-        int x = ScreenMargin;
+        int x = ScreenMargin + BarIconSize + BarIconGap;
         int y = Screen.Height - margin - barHeight;
         int fill = (int)(barWidth * player.PowerFraction);
 
+        HudIcons.DrawEnergy(BarIconSlot(y, barHeight), Color.Yellow);
         Raylib.DrawRectangle(x, y, barWidth, barHeight, Color.DarkGray);
         Raylib.DrawRectangle(x, y, fill, barHeight, Color.Yellow);
         Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);

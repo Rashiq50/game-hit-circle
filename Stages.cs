@@ -50,6 +50,7 @@ static class Stages
     // Placeholder curve for testing: 3 demons on stage 1 ramping to 20 on stage 10, variants mixed in as it goes.
     static readonly StageDef[] All =
     [
+        new(MaxAtOnce: 5, Roster((Enemies.Grunt, 5), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2))),
         new(MaxAtOnce: 2, Roster((Enemies.Grunt, 3))),
         new(MaxAtOnce: 2, Roster((Enemies.Imp, 2), (Enemies.Grunt, 2))),
         new(MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Brute, 1))),
@@ -58,7 +59,6 @@ static class Stages
         new(MaxAtOnce: 4, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Sniper, 2), (Enemies.Tank, 2))),
         new(MaxAtOnce: 4, Roster((Enemies.Grunt, 5), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2), (Enemies.Wisp, 1))),
         new(MaxAtOnce: 4, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2))),
-        new(MaxAtOnce: 5, Roster((Enemies.Grunt, 5), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2))),
         new(MaxAtOnce: 5, Roster((Enemies.Grunt, 6), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2), (Enemies.Warlord, 1))),
     ];
 

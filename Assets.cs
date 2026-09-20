@@ -18,7 +18,7 @@ static class Assets
 
     public static void Load()
     {
-        Background = Raylib.LoadTexture("tile.png");
+        Background = Raylib.LoadTexture("textures/stages/castle_floor.png");
         WelcomBackground = Raylib.LoadTexture("textures/welcome.png");
         MainMenuBackground = Raylib.LoadTexture("textures/mainmenu.png");
         Fireball = Raylib.LoadTexture("textures/fireball.png");
