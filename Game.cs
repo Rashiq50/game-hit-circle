@@ -18,6 +18,12 @@ class Game
     // readonly Demon demon = new();
     readonly ScorePopup popup = new();
     readonly List<Demon> demons = [];
+    // Powers: number keys, listed in the bottom-centre HUD in this order. Slots past the list are drawn empty.
+    readonly SlowTimePower slowTime = new();
+    Power[] Powers => [slowTime];
+    const int PowerSlots = 3;
+    /// <summary>Multiplier on the world's clock (demons, shots, popups). The player, camera and HUD always run in real time.</summary>
+    float TimeScale => slowTime.IsActive ? SlowTimePower.Scale : 1f;
 
     GameState state = GameState.Welcome;
     // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
@@ -182,6 +188,7 @@ class Game
         score = 0;
         highScore = checkpoint.HighScore;
         player.Reset();
+        ResetPowers();
         CancelUltimateSequence();
         BeginStage();
     }
@@ -193,8 +200,14 @@ class Game
         score = checkpoint.Score;
         highScore = checkpoint.HighScore;
         player.Resume(checkpoint.PlayerHp, checkpoint.PlayerUlti);
+        ResetPowers();
         CancelUltimateSequence();
         BeginStage();
+    }
+
+    void ResetPowers()
+    {
+        foreach (var power in Powers) power.Reset();
     }
 
     /// <summary>Wipes the field and restarts the current stage's roster from its first demon.</summary>
@@ -314,10 +327,14 @@ class Game
         {
             if (Raylib.IsMouseButtonPressed(MouseButton.Left)) player.Attack(AttackKind.Light);
             else if (Raylib.IsMouseButtonPressed(MouseButton.Right)) player.Attack(AttackKind.Heavy);
+            foreach (var power in Powers)
+                if (Raylib.IsKeyPressed(power.Key)) power.Toggle();
         }
+        foreach (var power in Powers) power.Update(dt);
+        float worldDt = dt * TimeScale; // everything that is not the player ticks on the (possibly slowed) world clock
 
         player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
-        popup.Update(dt);
+        popup.Update(worldDt);
         SpawnEnemies();
 
         var demon = demons.Find(d => d.Overlaps(player));
@@ -350,7 +367,7 @@ class Game
         foreach (var dm in demons)
         {
             dm.UpdateHover(false, dt);
-            dm.Update(dt, player, holdFire: cinematic);
+            dm.Update(worldDt, player, holdFire: cinematic);
             if (!cinematic && dm.ConsumeProjectileHit(player))
             {
                 Shake();
@@ -539,7 +556,10 @@ class Game
         // Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
         DrawUltimateBar();
+        DrawPowerSlots();
+        DrawAttackPrompts();
         DrawUltimateHint();
+        if (slowTime.IsActive) DrawSlowTimeTint();
         int cheatY = ScreenMargin + 28;
         if (!Demon.AggroEnabled)
             Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, cheatY, 18, Color.Orange);
@@ -550,7 +570,7 @@ class Game
     void DrawUltimateHint()
     {
         const int fontSize = 24;
-        int y = Screen.Height - ScreenMargin - fontSize; // bottom centre, level with the health bar
+        int y = Screen.Height - ScreenMargin - PowerSlotSize - 12 - fontSize; // bottom centre, just above the power slots
         if (IsTargeting)
             Screen.DrawCenteredText("Click an enemy to unleash your ultimate  -  [F] cancel", y, fontSize, Color.Yellow);
         else if (player.PlayerUlti >= 100 && ultimatePhase == UltimatePhase.None)
@@ -583,5 +603,77 @@ class Game
         Raylib.DrawRectangle(x, y, fill, barHeight, Color.Yellow);
         Raylib.DrawRectangleLines(x, y, barWidth, barHeight, Color.White);
     }
+
+    const int PowerSlotSize = 54;
+    const int PowerSlotGap = 12;
+    const int PromptSlotSize = 70;
+    const int PromptSlotGap = 14;
+    const float SlotRoundness = 0.2f;
+
+    /// <summary>Bottom centre: one square per power slot, with the key in the corner and a fill showing the active time or cooldown left.</summary>
+    void DrawPowerSlots()
+    {
+        const int keyFontSize = 12;
+        int totalWidth = PowerSlots * PowerSlotSize + (PowerSlots - 1) * PowerSlotGap;
+        int x = Screen.Width / 2 - totalWidth / 2;
+        int y = Screen.Height - ScreenMargin - PowerSlotSize;
+
+        for (int i = 0; i < PowerSlots; i++)
+        {
+            var slot = new Rectangle(x + i * (PowerSlotSize + PowerSlotGap), y, PowerSlotSize, PowerSlotSize);
+            Power? power = i < Powers.Length ? Powers[i] : null;
+            Raylib.DrawRectangleRounded(slot, SlotRoundness, 6, Raylib.Fade(Color.Black, 0.55f));
+
+            if (power is null)
+            {
+                Raylib.DrawRectangleRoundedLinesEx(slot, SlotRoundness, 6, 2f, Raylib.Fade(Color.Gray, 0.5f));
+                continue;
+            }
+
+            // Active: a blue bar drains downward as the effect runs out. Cooling down: a grey bar climbs back up to ready.
+            float fill = power.IsActive ? power.ActiveFraction : power.CooldownFraction;
+            if (fill > 0)
+            {
+                float fillHeight = slot.Height * fill;
+                Color fillColor = power.IsActive ? Raylib.Fade(Color.SkyBlue, 0.45f) : Raylib.Fade(Color.White, 0.18f);
+                Raylib.BeginScissorMode((int)slot.X, (int)(slot.Y + slot.Height - fillHeight), (int)slot.Width, (int)MathF.Ceiling(fillHeight));
+                Raylib.DrawRectangleRounded(slot, SlotRoundness, 6, fillColor);
+                Raylib.EndScissorMode();
+            }
+
+            Color tint = power.IsActive ? Color.SkyBlue : power.IsReady ? Color.White : Color.Gray;
+            power.DrawIcon(slot, tint);
+            Raylib.DrawRectangleRoundedLinesEx(slot, SlotRoundness, 6, 2f, power.IsActive ? Color.SkyBlue : Color.LightGray);
+            Raylib.DrawText(power.KeyLabel, (int)slot.X + 5, (int)slot.Y + 4, keyFontSize, power.IsReady || power.IsActive ? Color.White : Color.Gray);
+        }
+    }
+
+    /// <summary>Bottom right: the two mouse buttons with the attack each one throws; the slot lights up mid-swing.</summary>
+    void DrawAttackPrompts()
+    {
+        const int labelFontSize = 12;
+        int totalWidth = 2 * PromptSlotSize + PromptSlotGap;
+        int x = Screen.Width - ScreenMargin - totalWidth;
+        int y = Screen.Height - ScreenMargin - PromptSlotSize;
+        (string label, bool leftButton, AttackKind kind)[] prompts = [("Light", true, AttackKind.Light), ("Heavy", false, AttackKind.Heavy)];
+
+        for (int i = 0; i < prompts.Length; i++)
+        {
+            var (label, leftButton, kind) = prompts[i];
+            var slot = new Rectangle(x + i * (PromptSlotSize + PromptSlotGap), y, PromptSlotSize, PromptSlotSize);
+            bool swinging = player.IsAttacking && player.CurrentAttack == kind;
+            Raylib.DrawRectangleRounded(slot, SlotRoundness, 6, Raylib.Fade(Color.Black, 0.55f));
+            // The icon sits a little high so the label fits underneath it.
+            var iconArea = new Rectangle(slot.X, slot.Y, slot.Width, slot.Height - labelFontSize - 4);
+            HudIcons.DrawMouse(iconArea, leftButton, swinging ? Color.Yellow : Color.White, swinging ? Color.Yellow : Color.LightGray);
+            Raylib.DrawRectangleRoundedLinesEx(slot, SlotRoundness, 6, 2f, swinging ? Color.Yellow : Color.LightGray);
+            int labelWidth = Raylib.MeasureText(label, labelFontSize);
+            Raylib.DrawText(label, (int)(slot.X + slot.Width / 2 - labelWidth / 2f), (int)(slot.Y + slot.Height - labelFontSize - 6), labelFontSize, Color.LightGray);
+        }
+    }
+
+    /// <summary>Faint blue wash over the whole screen so it's obvious the world is running slow.</summary>
+    static void DrawSlowTimeTint() =>
+        Raylib.DrawRectangle(0, 0, Screen.Width, Screen.Height, Raylib.Fade(Color.SkyBlue, 0.07f));
 
 }
