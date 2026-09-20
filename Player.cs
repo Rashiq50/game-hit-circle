@@ -10,10 +10,10 @@ class Player
     const float DrawSize = 96f;
     const float AnimFps = 10f;
     // Both attacks play the same axe strip; the speed is what makes one feel quick and the other committed.
-    const float LightAttackFps = 24f; // fast swing
-    const float HeavyAttackFps = 12f; // slow swing
-    const float LightDamage = 20;
-    const float HeavyDamage = 40;
+    const float LightAttackFps = 30f; // fast swing
+    const float HeavyAttackFps = 15f; // slow swing
+    const float LightDamage = 30;
+    const float HeavyDamage = 55;
     const int AttackImpactFrame = 3;
     /// Runtime cheat (F4 in-game): full health and ultimate, and no damage taken.
     public static bool GodMode { get; private set; }
