@@ -10,8 +10,8 @@ class Player
     const float DrawSize = 96f;
     const float AnimFps = 10f;
     // Both attacks play the same axe strip; the speed is what makes one feel quick and the other committed.
-    const float LightAttackFps = 22f; // fast swing
-    const float HeavyAttackFps = 9f; // slow swing
+    const float LightAttackFps = 24f; // fast swing
+    const float HeavyAttackFps = 12f; // slow swing
     const float LightDamage = 20;
     const float HeavyDamage = 40;
     const int AttackImpactFrame = 3;
