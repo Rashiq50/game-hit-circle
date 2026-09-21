@@ -553,7 +553,7 @@ class Game
         Raylib.DrawText($"{score}", ScreenMargin + scoreFontSize + 6, ScreenMargin, scoreFontSize, Color.White);
         // Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, scoreFontSize, Color.Gold);
         int demonsLeft = CurrentStage.TotalEnemies - spawned + demons.Count(d => d.IsAlive);
-        Raylib.DrawText($"Stage {stage}/{Stages.Count}   Demons left: {demonsLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
+        Raylib.DrawText($"Stage {stage}/{Stages.Count}   Enemies left: {demonsLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         // Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
@@ -562,7 +562,7 @@ class Game
         DrawAttackPrompts();
         DrawUltimateHint();
         if (slowTime.IsActive) DrawSlowTimeTint();
-        int cheatY = ScreenMargin + 28;
+        int cheatY = ScreenMargin + 48;
         if (!Demon.AggroEnabled)
             Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, cheatY, 18, Color.Orange);
         if (Player.GodMode)
