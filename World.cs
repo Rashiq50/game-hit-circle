@@ -45,15 +45,28 @@ static class World
     /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
     public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);
 
-    public static Vector2 RandomEnemySpawn(Rectangle avoid, int attempts = 10)
+    /// <summary>
+    /// Picks a map spawn point whose clearance square is free of every rectangle in <paramref name="occupied"/>
+    /// (the player and the demons already on the field). Every point is tried once in random order, so a free
+    /// point is always found when one exists; only when all are taken does it fall back to a random one.
+    /// </summary>
+    public static Vector2 RandomEnemySpawn(IEnumerable<Rectangle> occupied)
     {
         var spawns = CollisionMap.EnemySpawns;
         if (spawns.Count == 0) return RandomPoint();
-        Vector2 p = spawns[Random.Shared.Next(spawns.Count)];
-        for (int i = 0; i < attempts && Raylib.CheckCollisionRecs(new Rectangle(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance), avoid); i++)
-            p = spawns[Random.Shared.Next(spawns.Count)];
-        return p;
+        var taken = occupied.ToList();
+        var order = Enumerable.Range(0, spawns.Count).ToArray();
+        Random.Shared.Shuffle(order);
+        foreach (int i in order)
+        {
+            var clearance = ClearanceAt(spawns[i]);
+            if (!taken.Any(r => Raylib.CheckCollisionRecs(clearance, r))) return spawns[i];
+        }
+        return spawns[order[0]];
     }
+
+    static Rectangle ClearanceAt(Vector2 p) =>
+        new(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance);
 
     public static Vector2 RandomPoint()
     {
@@ -62,7 +75,7 @@ static class World
         {
             p = new(Random.Shared.Next(SpawnMargin, EnemySpawnWidth - SpawnMargin),
                     Random.Shared.Next(SpawnMargin, EnemySpawnHeight - SpawnMargin));
-        } while (CollisionMap.Blocks(new Rectangle(p.X - SpawnClearance / 2f, p.Y - SpawnClearance / 2f, SpawnClearance, SpawnClearance)));
+        } while (CollisionMap.Blocks(ClearanceAt(p)));
         return p;
     }
 }

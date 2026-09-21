@@ -7,7 +7,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
-    public static bool AggroEnabled = true;
+    public static bool AggroEnabled = false;
     //
     const float SpriteRadius = 25f; // hit box of the sprite look; the strip has a lot of transparent padding around the body
     const float DrawSize = 110f;
@@ -16,7 +16,6 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float MinTargetRadius = 45f; // so small looks are still comfortable to click
     const float IdleFps = 12f;
     const float DeathDuration = 0.4f;
-    const int RespawnAttemptCap = 10;
     const float FireInterval = 2f; // seconds between shots while alive
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
@@ -78,9 +77,10 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         }
     }
 
-    public void Respawn(Player player)
+    /// <param name="others">Demons already on the field, so this one doesn't land on a spawn point one of them is standing on.</param>
+    public void Respawn(Player player, IEnumerable<Demon> others)
     {
-        Center = World.RandomEnemySpawn(player.Bounds, RespawnAttemptCap);
+        Center = World.RandomEnemySpawn(others.Where(d => d != this && d.IsAlive).Select(d => d.Bounds).Prepend(player.Bounds));
         state = DemonState.Idle;
         animElapsed = 0;
         fireCooldown = FireInterval;
@@ -155,7 +155,6 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         foreach (var p in projectiles) p.Draw();
     }
 
-    /// <summary>Small bar floating just above the sprite; only shown while alive.</summary>
     void DrawHealthBar()
     {
         const float barWidth = 44f;

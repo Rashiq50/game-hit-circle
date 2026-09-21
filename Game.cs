@@ -245,8 +245,8 @@ class Game
         if (spawned < def.TotalEnemies && demons.Count < def.MaxAtOnce)
         {
             Demon demon = def.Enemies[spawned++].Spawn();
+            demon.Respawn(player, demons);
             demons.Add(demon);
-            demon.Respawn(player);
         }
     }
 
