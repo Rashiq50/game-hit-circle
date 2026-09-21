@@ -1,9 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-enum EnemyAttackTypes { Ranged, Melee, Both }
-
-class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackTypes attackType = EnemyAttackTypes.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite)
+class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
@@ -103,12 +101,24 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         animElapsed += dt;
         if (holdFire) return;
 
-        if (IsAlive && AggroEnabled && (attackType.Equals(EnemyAttackTypes.Both) || attackType.Equals(EnemyAttackTypes.Ranged)))
+        if (IsAlive && AggroEnabled && (attackType.Equals(EnemyAttackType.Both) || attackType.Equals(EnemyAttackType.Ranged)))
         {
             fireCooldown -= dt;
+            List<Vector2> targets = [];
+            if (rangedType.Equals(RangedAttackType.Targeting))
+            {
+                targets.Add(player.Center);
+            }
+            else if (rangedType.Equals(RangedAttackType.Directional))
+            {
+                // Figure out directional fucntionality
+            }
             if (fireCooldown <= 0)
             {
-                projectiles.Add(new EnemyProjectile(Center, player.Center, rangedDamage, projectileSpeed));
+                foreach (var target in targets)
+                {
+                    projectiles.Add(new EnemyProjectile(Center, target, rangedDamage, projectileSpeed));
+                }
                 fireCooldown += FireInterval;
             }
         }
