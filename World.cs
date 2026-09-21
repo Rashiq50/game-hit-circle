@@ -58,10 +58,6 @@ static class World
     /// <summary>Mouse position in world units, for hit tests against world-space objects.</summary>
     public static Vector2 MousePosition() => Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), Camera);
 
-    /// <summary>
-    /// A random enemy spawn point from the map; falls back to <see cref="RandomPoint"/> when the map has none.
-    /// Keeping clear of <paramref name="avoid"/> (the player) is best effort: with a few fixed points there may be no clear one.
-    /// </summary>
     public static Vector2 RandomEnemySpawn(Rectangle avoid, int attempts = 10)
     {
         var spawns = CollisionMap.EnemySpawns;
