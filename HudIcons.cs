@@ -110,13 +110,20 @@ static class HudIcons
     }
 
     /// <summary>A coin with a ring inset: score or currency pickups.</summary>
-    public static void DrawCoin(Rectangle slot, Color tint)
+    public static void DrawCoin(Rectangle slot, Color tint) => DrawCoin(slot, tint, 1f);
+
+    /// <summary>The coin squashed horizontally by <paramref name="widthScale"/> (0..1), so it can be animated spinning about its vertical axis.</summary>
+    public static void DrawCoin(Rectangle slot, Color tint, float widthScale)
     {
         Vector2 c = new(slot.X + slot.Width / 2, slot.Y + slot.Height / 2);
-        float r = Math.Min(slot.Width, slot.Height) * 0.32f;
-        Raylib.DrawCircleV(c, r, tint);
-        Raylib.DrawRing(c, r * 0.6f, r * 0.72f, 0, 360, 32, Raylib.Fade(Color.Black, 0.3f)); // inset ring
-        Raylib.DrawCircleV(c + new Vector2(-r * 0.35f, -r * 0.35f), r * 0.18f, Raylib.Fade(Color.White, 0.6f)); // shine
+        float r = slot.Height * 0.32f;
+        float rx = r * widthScale;
+        var ring = Raylib.Fade(Color.Black, 0.3f);
+        Raylib.DrawEllipse((int)c.X, (int)c.Y, rx, r, tint);
+        // Inset ring: a darker ellipse with the coin colour drawn back over its middle.
+        Raylib.DrawEllipse((int)c.X, (int)c.Y, rx * 0.72f, r * 0.72f, ring);
+        Raylib.DrawEllipse((int)c.X, (int)c.Y, rx * 0.6f, r * 0.6f, tint);
+        Raylib.DrawEllipse((int)(c.X - rx * 0.35f), (int)(c.Y - r * 0.35f), r * 0.18f * widthScale, r * 0.18f, Raylib.Fade(Color.White, 0.6f)); // shine
     }
 
     /// <summary>A skull: danger warnings or a kill counter.</summary>

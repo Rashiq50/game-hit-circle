@@ -19,6 +19,7 @@ class Game
     readonly Player player = new();
     readonly ScorePopup popup = new();
     readonly List<Demon> demons = [];
+    readonly List<CoinDrop> coins = [];
     readonly SlowTimePower slowTime = new();
     Power[] Powers => [slowTime];
     const int PowerSlots = 3;
@@ -96,6 +97,10 @@ class Game
             foreach (var demon in demons)
             {
                 demon.Draw();
+            }
+            foreach (var coin in coins)
+            {
+                coin.Draw();
             }
             popup.Draw();
         }
@@ -345,23 +350,17 @@ class Game
             if (Math.Max(0, demon.CurrentHp - damage) <= 0)
             {
                 demon.Kill(player);
-                score += demon.ScorePoint;
                 SaveProgress();
                 Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
                 Raylib.PlaySound(Assets.ScoreSound);
-                popup.Show(demon.Center, demon.ScorePoint);
+                // score += demon.ScorePoint;
+                // popup.Show(demon.Center, demon.ScorePoint);
+                var coin = new CoinDrop(demon.Center, demon.ScorePoint);
+                coins.Add(coin);
             }
             demon.ReceiveDamage(damage);
         }
-        // if (demon.IsDead)
-        // {
-        //     Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-        //     Raylib.PlaySound(Assets.ScoreSound);
-        //     popup.Show(demon.Center, demon.ScorePoint);
-        //     // demon.Respawn(player);
-        //     // endTime = Raylib.GetTime() + PlayTime + bonusTime;
-        //     // bonusTime = 0;
-        // }
+
 
 
         foreach (var dm in demons)
@@ -374,6 +373,20 @@ class Game
             }
         }
         demons.RemoveAll(p => p.IsDead);
+
+        // coin drop parts
+        foreach (var coin in coins)
+        {
+            coin.Update(worldDt, player.Center);
+            if (coin.Collectable && coin.Overlaps(player)) coin.StartPickUp();
+            if (coin.PickedUp) // the coin has reached the player: award it
+            {
+                score += coin.ScorePoint;
+                popup.Show(player.Center, coin.ScorePoint);
+            }
+        }
+        coins.RemoveAll(p => p.PickedUp);
+
         if (StageCleared && !BannerShowing)
             ShowBanner($"Stage {stage} complete!", then: AdvanceStage);
     }
