@@ -1,41 +1,28 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>
-/// The play area in fixed virtual units: the whole castle floor, matching the background image and the Tiled map
-/// pixel for pixel. Gameplay code positions everything in this space and never looks at the window size; the camera
-/// shows a <see cref="ViewWidth"/> x <see cref="ViewHeight"/> window onto it that follows the player.
-/// </summary>
 static class World
 {
-    public const int Tile = 32; // canonical tile size; walls and doors in the map sit on this grid
+    public const int Tile = 32;
     public const int Width = 125 * Tile;
     public const int Height = 75 * Tile;
-    /// <summary>How much of the world is on screen at once (32 x 20 tiles). Smaller = closer camera, bigger sprites.</summary>
     public const int ViewWidth = 28 * Tile;
     public const int ViewHeight = 16 * Tile;
     const int EnemySpawnWidth = 62 * Tile;
     const int EnemySpawnHeight = 38 * Tile;
     const float FollowRate = 6f; // how quickly the camera closes on the player, per second; higher is tighter
     const int SpawnMargin = 50;
-    const int SpawnClearance = 60; // spawn box must fit the player (40) and demon (50) hit boxes
+    const int SpawnClearance = 60;
 
     public static readonly Vector2 Center = new(Width / 2f, Height / 2f);
     public static Camera2D Camera = new() { Target = Center, Zoom = 1f };
     static Vector2 followPoint = Center; // where the follow camera is looking right now; eases toward the player
 
-    /// <summary>Eases the camera toward <paramref name="point"/> (the player); frame-rate independent.</summary>
     public static void Follow(Vector2 point, float dt) =>
         followPoint = Vector2.Lerp(followPoint, point, 1f - MathF.Exp(-FollowRate * dt));
 
-    /// <summary>Puts the camera straight onto <paramref name="point"/>, for spawns and restarts so it never pans across the map.</summary>
     public static void SnapTo(Vector2 point) => followPoint = point;
 
-    /// <summary>
-    /// With <paramref name="follow"/> the camera shows a view-sized window centred on the follow point, never reaching past
-    /// the world's edges (which would show black); otherwise it fits the whole world in the window (menus). While a
-    /// <see cref="CameraFocus"/> is running the view zooms in and pans onto the focus point instead.
-    /// </summary>
     public static void FitCamera(Vector2 shake, bool follow)
     {
         Camera.Offset = new Vector2(Screen.Width / 2f, Screen.Height / 2f);
@@ -68,7 +55,6 @@ static class World
         return p;
     }
 
-    /// <summary>A random spot that leaves a <see cref="SpawnClearance"/> box around it clear of walls.</summary>
     public static Vector2 RandomPoint()
     {
         Vector2 p;
@@ -81,10 +67,6 @@ static class World
     }
 }
 
-/// <summary>
-/// Cinematic camera zoom: <see cref="Focus"/> eases the camera in onto a point and holds there until <see cref="Release"/>,
-/// which eases it back out to the full view. <see cref="World.FitCamera"/> reads <see cref="Amount"/> to blend the two.
-/// </summary>
 static class CameraFocus
 {
     public const float Zoom = 2f; // multiplier over the fit-to-window zoom
@@ -92,11 +74,9 @@ static class CameraFocus
 
     public static Vector2 Point { get; private set; }
     static bool holding;
-    static float level; // 0 = full view, 1 = fully zoomed; moves toward the hold state at 1/EaseTime per second
+    static float level;
 
-    /// <summary>0 = full view, 1 = fully zoomed onto <see cref="Point"/>, smoothed so the camera glides.</summary>
     public static float Amount => level * level * (3f - 2f * level);
-    /// <summary>True once the zoom-in has finished (or if nothing is being focused).</summary>
     public static bool IsSettled => level >= 1f || (!holding && level <= 0f);
 
     public static void Focus(Vector2 point)
@@ -114,7 +94,7 @@ static class CameraFocus
     }
 }
 
-/// <summary>The actual window, in pixels. Only UI (HUD, menus) should position by this.</summary>
+///The actual window, in pixels. Only UI (HUD, menus) should position by this
 static class Screen
 {
     public static int Width => Raylib.GetScreenWidth();

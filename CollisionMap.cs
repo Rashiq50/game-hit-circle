@@ -2,19 +2,12 @@ using System.Numerics;
 using System.Xml.Linq;
 using Raylib_cs;
 
-/// <summary>
-/// Data read from the Tiled map's object layers: rectangles are solid walls, points named "PlayerSpawn" / "EnemySpawn"
-/// are spawn positions. The map is authored over the background image, so everything is stretched into world units
-/// exactly the way the background is drawn.
-/// </summary>
 static class CollisionMap
 {
     static readonly List<Rectangle> walls = [];
     static readonly List<Vector2> enemySpawns = [];
 
-    /// <summary>Where the player starts; the world centre if the map has no "PlayerSpawn" point.</summary>
     public static Vector2 PlayerSpawn { get; private set; } = World.Center;
-    /// <summary>Every "EnemySpawn" point, in world units; empty if the map has none.</summary>
     public static IReadOnlyList<Vector2> EnemySpawns => enemySpawns;
 
     public static void Load(string tmxPath)

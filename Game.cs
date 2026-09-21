@@ -17,14 +17,11 @@ class Game
         : Vector2.Zero;
 
     readonly Player player = new();
-    // readonly Demon demon = new();
     readonly ScorePopup popup = new();
     readonly List<Demon> demons = [];
-    // Powers: number keys, listed in the bottom-centre HUD in this order. Slots past the list are drawn empty.
     readonly SlowTimePower slowTime = new();
     Power[] Powers => [slowTime];
     const int PowerSlots = 3;
-    /// <summary>Multiplier on the world's clock (demons, shots, popups). The player, camera and HUD always run in real time.</summary>
     float TimeScale => slowTime.IsActive ? SlowTimePower.Scale : 1f;
 
     GameState state = GameState.Welcome;
@@ -33,7 +30,6 @@ class Game
     int stage;
     int spawned; // demons of the current stage's roster that have entered the field so far
     StageDef CurrentStage => Stages.Get(stage);
-    // Stage banner ("Stage 3 complete!", "Stage 4"): the world keeps running underneath, but spawning waits for it.
     const float BannerDuration = 1.8f;
     const float BannerFadeIn = 0.2f;
     const float BannerFadeOut = 0.5f;
@@ -242,7 +238,6 @@ class Game
         then?.Invoke();
     }
 
-    /// <summary>Feeds the roster onto the field in order, never exceeding the stage's live cap; held while a banner is up.</summary>
     void SpawnEnemies()
     {
         if (BannerShowing) return;
@@ -257,7 +252,6 @@ class Game
 
     bool StageCleared => spawned >= CurrentStage.TotalEnemies && demons.Count == 0;
 
-    /// <summary>Moves the checkpoint forward; the last stage just replays until there is a proper ending.</summary>
     void AdvanceStage()
     {
         if (!Stages.IsLast(stage)) stage++;
