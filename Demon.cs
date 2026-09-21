@@ -147,6 +147,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
             Raylib.DrawRing(Center, ring - 3f, ring, 0, 360, 48, Raylib.Fade(Color.Yellow, 0.8f * hover));
         }
         float scale = 1f + HoverScale * hover;
+        DrawShadow(scale);
         if (look == EnemyLook.Sprite)
         {
             var strip = state == DemonState.Dying ? Assets.DemonDeath : Assets.DemonIdle;
@@ -163,6 +164,19 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         }
         if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
+    }
+
+    /// <summary>A soft ground shadow under the feet so the body separates from the background; fades out with the death animation.</summary>
+    void DrawShadow(float scale)
+    {
+        float death = state == DemonState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
+        float rx = halfSize.X * 0.9f * scale * (1f - 0.5f * death);
+        float ry = Math.Max(4f, rx * 0.35f);
+        int x = (int)Center.X, y = (int)(Center.Y + halfSize.Y * scale - ry * 0.5f);
+        float alpha = 1f - death;
+        // Two ellipses: a wide faint one and a tighter darker core, so the edge reads soft instead of a hard disc.
+        Raylib.DrawEllipse(x, y, rx, ry, Raylib.Fade(Color.Black, 0.18f * alpha));
+        Raylib.DrawEllipse(x, y, rx * 0.65f, ry * 0.65f, Raylib.Fade(Color.Black, 0.22f * alpha));
     }
 
     void DrawHealthBar()
