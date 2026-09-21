@@ -7,7 +7,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
-    public static bool AggroEnabled = false;
+    public static bool AggroEnabled = true;
     //
     const float SpriteRadius = 25f; // hit box of the sprite look; the strip has a lot of transparent padding around the body
     const float DrawSize = 110f;
