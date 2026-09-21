@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -9,9 +9,10 @@
     <RootNamespace>HitThemAll</RootNamespace>
   </PropertyGroup>
 
-  <!-- Publish settings: `dotnet publish -c Release -r win-x64` (or osx-arm64 / osx-x64 / linux-x64)
-       produces one self-contained exe (no .NET install needed). No RID is set here so `dotnet run` works on any OS. -->
+  <!-- Keep a console attached during local development so Console.WriteLine and debug output are visible when running with `dotnet run`.
+       Release builds can still be packaged as a GUI app if needed. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputType>WinExe</OutputType>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
