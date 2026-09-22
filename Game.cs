@@ -350,7 +350,9 @@ class Game
         popup.Update(worldDt);
         SpawnEnemies();
 
-        var demon = demons.Find(d => d.Overlaps(player));
+        var demon = player.IsUsingUltimate
+            ? demons.Find(d => d.IsSelectedForUlt)
+            : demons.Find(d => d.Overlaps(player));
 
         if (demon != null && demon.IsAlive && player.SwingLanded)
         {

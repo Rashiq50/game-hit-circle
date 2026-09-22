@@ -65,14 +65,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     {
         state = DemonState.Dying;
         animElapsed = 0;
-        if (!player.IsUsingUltimate)
-        {
-            player.ReceivePower(powerDrop);
-        }
-        else
-        {
-            player.AddUltimateKill();
-        }
+        if (!player.IsUsingUltimate) player.ReceivePower(powerDrop);
     }
 
     /// <param name="others">Demons already on the field, so this one doesn't land on a spawn point one of them is standing on.</param>

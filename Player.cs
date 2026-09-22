@@ -21,8 +21,6 @@ class Player
     public static bool GodMode { get; private set; }
     // 
     private bool IsUltimate = false;
-    private int UltimateKills = 0;
-    private int UltimateKillLimit = 1;
     static readonly float PlayerHealth = 100;
     public float PlayerCurrentHp = PlayerHealth;
     public float PlayerUlti;
@@ -91,18 +89,13 @@ class Player
         ? Strip.OneShotFrame(animElapsed, AttackDuration)
         : Strip.LoopFrame(animElapsed, AnimFps);
 
-    public void AddUltimateKill()
-    {
-        UltimateKills += 1;
-    }
-
     public void Reset()
     {
         position = CollisionMap.PlayerSpawn - HalfSize;
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
-        UltimateKills = 0;
+        IsUltimate = false;
         PlayerUlti = 0;
     }
     public void Resume(float health, float ulti)
@@ -112,6 +105,7 @@ class Player
         PlayerCurrentHp = health;
         PlayerUlti = ulti;
         animElapsed = 0;
+        IsUltimate = false; // quitting mid-ultimate must not carry the flag into the next round
     }
 
     /// <summary>Ignored mid-swing so a heavy's windup can't be cancelled by mashing.</summary>
@@ -140,7 +134,7 @@ class Player
     public void Ultimate(Vector2 at)
     {
         IsUltimate = true;
-        TeleportToEntity(at);
+        TeleportBeside(at);
         if (!GodMode)
         {
             PlayerUlti = 0;
@@ -178,6 +172,10 @@ class Player
             blockElapsed += dt;
         }
 
+        // The ultimate's swing is a cinematic: holding a movement key mid-strike must not walk the player off the
+        // target or spin the facing (and with it the attack box) away from the demon the bolt is coming down on.
+        if (attacking && IsUltimate) return;
+
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
         float step = (boosting ? Speed * BoostMultiplier : Speed) * dt;
 
@@ -214,7 +212,6 @@ class Player
         var next = Vector2.Clamp(position + delta, Vector2.Zero, new Vector2(World.Width - SizeX, World.Height - SizeY));
         var nextBounds = new Rectangle(next.X, next.Y, SizeX, SizeY);
         if (CollisionMap.Blocks(nextBounds)) return;
-        // An obstacle only blocks entry: if we're already inside one (e.g. it spawned on us) we can still walk out.
         foreach (var o in obstacles)
             if (Raylib.CheckCollisionRecs(o, nextBounds) && !Raylib.CheckCollisionRecs(o, Bounds)) return;
         position = next;
@@ -225,28 +222,41 @@ class Player
         int frameBefore = CurrentFrame;
         animElapsed += dt;
         SwingLanded = frameBefore < AttackImpactFrame && CurrentFrame >= AttackImpactFrame;
-        if (SwingLanded && UltimateKills >= UltimateKillLimit)
+        if (animElapsed >= AttackDuration)
         {
+            state = PlayerState.Idle;
             IsUltimate = false;
-            UltimateKills = 0;
         }
-        if (animElapsed >= AttackDuration) state = PlayerState.Idle;
     }
 
-    void TeleportToEntity(Vector2 at)
+    void TeleportBeside(Vector2 at)
     {
-        Vector2[] candidates = [new Vector2(at.X, at.Y - SizeY), new Vector2(at.X, at.Y + SizeY), new Vector2(at.X - SizeX, at.Y), new Vector2(at.X + SizeX, at.Y)];
-        // List<int> unblockedPoints = new List<int>{};
-        // TODO: later play with teleport direction etc
-        for (int i = 0; i < candidates.Length; i++)
+        const float Gap = HeavyAttackReach * 0.5f;
+        (Vector2 Centre, Direction Face)[] sides =
+        [
+            (new Vector2(at.X, at.Y - Gap - SizeY / 2f), Direction.Down),
+            (new Vector2(at.X, at.Y + Gap + SizeY / 2f), Direction.Up),
+            (new Vector2(at.X - Gap - SizeX / 2f, at.Y), Direction.Right),
+            (new Vector2(at.X + Gap + SizeX / 2f, at.Y), Direction.Left),
+        ];
+
+        foreach (var (centre, face) in sides)
         {
-            if (!CollisionMap.Blocks(new Rectangle(candidates[i].X, candidates[i].Y, SizeX, SizeY)))
-            {
-                Console.WriteLine($"at: {at}  going: {candidates[i]}");
-                position = candidates[i];
-                break;
-            }
+            var spot = Vector2.Clamp(centre - HalfSize, Vector2.Zero, new Vector2(World.Width - SizeX, World.Height - SizeY));
+            if (CollisionMap.Blocks(new Rectangle(spot.X, spot.Y, SizeX, SizeY))) continue;
+            position = spot;
+            facing = face;
+            return;
         }
+        facing = FacingTowards(at);
+    }
+
+    Direction FacingTowards(Vector2 target)
+    {
+        Vector2 d = target - Center;
+        return Math.Abs(d.X) >= Math.Abs(d.Y)
+            ? d.X >= 0 ? Direction.Right : Direction.Left
+            : d.Y >= 0 ? Direction.Down : Direction.Up;
     }
 
     public void Draw()
