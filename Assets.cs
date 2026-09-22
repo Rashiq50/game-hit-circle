@@ -11,7 +11,7 @@ static class Assets
     const int UltStrikeFrameHeight = 512;
 
     public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
-    public static SpriteStrip DemonIdle, DemonDeath, UltStrike;
+    public static SpriteStrip DemonIdle, DemonDeath, UltStrike, FireTrail, IceTrail, MagicTrail;
     public static Sound SwordSound, ScoreSound, UltSound, SwordBlockSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
@@ -36,6 +36,9 @@ static class Assets
         ScoreSound = Raylib.LoadSound("sounds/level-up-523624.mp3");
         UltSound = Raylib.LoadSound("sounds/ult.mp3");
         SwordBlockSound = Raylib.LoadSound("sounds/sword-block.mp3");
+        FireTrail = new(Raylib.LoadTexture("textures/hero/ground-trail-element/fire_trail.png"), 83, 49);
+        IceTrail = new(Raylib.LoadTexture("textures/hero/ground-trail-element/ice_trail.png"), 83, 49);
+        MagicTrail = new(Raylib.LoadTexture("textures/hero/ground-trail-element/magic_trail.png"), 83, 49);
     }
 
     public static void Unload()
@@ -47,6 +50,9 @@ static class Assets
         Raylib.UnloadTexture(DemonIdle.Texture);
         Raylib.UnloadTexture(DemonDeath.Texture);
         Raylib.UnloadTexture(UltStrike.Texture);
+        Raylib.UnloadTexture(FireTrail.Texture);
+        Raylib.UnloadTexture(IceTrail.Texture);
+        Raylib.UnloadTexture(MagicTrail.Texture);
         foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
             Raylib.UnloadTexture(strip.Texture);
         Raylib.UnloadSound(SwordSound);
