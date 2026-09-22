@@ -356,8 +356,6 @@ class Game
             {
                 demon.Kill(player);
                 SaveProgress();
-                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-                Raylib.PlaySound(Assets.ScoreSound);
                 // score += demon.ScorePoint;
                 // popup.Show(demon.Center, demon.ScorePoint);
                 var coin = new CoinDrop(demon.Center, demon.ScorePoint);
@@ -394,6 +392,8 @@ class Game
             {
                 score += coin.ScorePoint;
                 popup.Show(player.Center, coin.ScorePoint);
+                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+                Raylib.PlaySound(Assets.ScoreSound);
             }
         }
         coins.RemoveAll(p => p.PickedUp);
