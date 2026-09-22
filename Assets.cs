@@ -9,7 +9,7 @@ static class Assets
 
     public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
     public static SpriteStrip DemonIdle, DemonDeath;
-    public static Sound SwordSound, ScoreSound;
+    public static Sound SwordSound, ScoreSound, UltSound, SwordBlockSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
     public static Color OverlayBlack2 = new Color(0, 0, 0, 100);
@@ -30,6 +30,8 @@ static class Assets
         HeroAxe = LoadHeroStrips("axe attack/axe_attack");
         SwordSound = Raylib.LoadSound("sounds/violent-sword-slice-393848.mp3");
         ScoreSound = Raylib.LoadSound("sounds/level-up-523624.mp3");
+        UltSound = Raylib.LoadSound("sounds/ult.mp3");
+        SwordBlockSound = Raylib.LoadSound("sounds/sword-block.mp3");
     }
 
     public static void Unload()
@@ -44,6 +46,8 @@ static class Assets
             Raylib.UnloadTexture(strip.Texture);
         Raylib.UnloadSound(SwordSound);
         Raylib.UnloadSound(ScoreSound);
+        Raylib.UnloadSound(UltSound);
+        Raylib.UnloadSound(SwordBlockSound);
     }
 
     static SpriteStrip[] LoadHeroStrips(string basePath)

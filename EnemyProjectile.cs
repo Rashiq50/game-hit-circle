@@ -17,7 +17,7 @@ class EnemyProjectile(Vector2 from, Vector2 toward, float damage, float speed)
     public bool Active { get; set; } = true;
     Rectangle Bounds => new(position.X - Radius, position.Y - Radius, Radius * 2, Radius * 2);
 
-    public bool Overlaps(Player player) => Active && Raylib.CheckCollisionRecs(Bounds, player.Bounds);
+    public bool Overlaps(Rectangle bound) => Active && Raylib.CheckCollisionRecs(Bounds, bound);
 
     public void Draw()
     {

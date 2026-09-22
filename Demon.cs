@@ -130,10 +130,19 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     /// <summary>True if any projectile hit the player this frame; the projectile is spent so it can only hit once.</summary>
     public bool ConsumeProjectileHit(Player player)
     {
-        var hit = projectiles.Find(p => p.Overlaps(player));
+        var hit = projectiles.Find(p => p.Overlaps(player.Bounds));
         if (hit is null) return false;
         hit.Active = false;
         player.ReceiveDamage(hit.GetDamageNumber());
+        return true;
+    }
+
+    public bool BlockProjectile(Player player)
+    {
+        var hit = projectiles.Find(p => p.Overlaps(player.ParryBounds));
+        if (hit is null) return false;
+        Raylib.PlaySound(Assets.SwordBlockSound);
+        hit.Active = false;
         return true;
     }
 

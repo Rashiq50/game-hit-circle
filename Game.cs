@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using Raylib_cs;
 
 class Game
@@ -112,6 +112,7 @@ class Game
     {
         Raylib.DrawRectangleLinesEx(player.Bounds, 2, Color.Lime);
         Raylib.DrawRectangleLinesEx(player.AttackBounds, 1, Color.DarkPurple);
+        Raylib.DrawRectangleLinesEx(player.ParryBounds, 1, Color.DarkGreen);
         foreach (var demon in demons)
             Raylib.DrawRectangleLinesEx(demon.Bounds, 2, demon.IsAlive ? Color.Red : Color.Gray);
     }
@@ -320,6 +321,10 @@ class Game
             else if (player.PlayerUlti >= 100 && !player.IsAttacking && ultimatePhase == UltimatePhase.None)
                 ultimatePhase = UltimatePhase.Targeting;
         }
+        if (Raylib.IsKeyPressed(KeyboardKey.E))
+        {
+            player.Block();
+        }
         if (IsTargeting)
         {
             UpdateTargeting(dt);
@@ -361,15 +366,21 @@ class Game
             demon.ReceiveDamage(damage);
         }
 
-
-
         foreach (var dm in demons)
         {
             dm.UpdateHover(false, dt);
             dm.Update(worldDt, player, holdFire: cinematic);
-            if (!cinematic && dm.ConsumeProjectileHit(player))
+            if (!cinematic)
             {
-                Shake();
+                if (dm.ConsumeProjectileHit(player))
+                {
+                    Shake();
+                }
+                else if (dm.BlockProjectile(player))
+                {
+                    score += 1;
+                    popup.Show(player.Center, 2);
+                }
             }
         }
         demons.RemoveAll(p => p.IsDead);

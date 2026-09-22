@@ -9,6 +9,8 @@ class Player
     const float BoostMultiplier = 1.8f;
     const float DrawSize = 96f;
     const float AnimFps = 10f;
+    const float blockDuration = 0.4f;
+    float blockElapsed = 0;
     // Both attacks play the same axe strip; the speed is what makes one feel quick and the other committed.
     const float LightAttackFps = 30f; // fast swing
     const float HeavyAttackFps = 15f; // slow swing
@@ -30,6 +32,8 @@ class Player
     const int LightAttackReach = 40;
     const int HeavyAttackReach = 60;
     int AttackReach => attackKind == AttackKind.Heavy ? HeavyAttackReach : LightAttackReach;
+    int BlockReach = 40;
+    bool isParrying = false;
 
     /// <summary>Rectangle used for melee collision and debugging; keeps the hitbox aligned with the facing direction.</summary>
     Rectangle GetAttackingBoundBox() => facing switch
@@ -38,6 +42,15 @@ class Player
         Direction.Right => new Rectangle(position.X + SizeX, position.Y - (SizeY / 2f), AttackReach, SizeY + SizeY),
         Direction.Up => new Rectangle(position.X - (SizeX / 2f), position.Y - AttackReach, SizeX + SizeX, AttackReach),
         Direction.Down => new Rectangle(position.X - (SizeX / 2f), position.Y + SizeY, SizeX + SizeX, AttackReach),
+        _ => new Rectangle(position.X, position.Y, SizeX, SizeY),
+    };
+
+    Rectangle GetBlockBoundBox() => facing switch
+    {
+        Direction.Left => new Rectangle(position.X - BlockReach, position.Y - (SizeY / 2f), BlockReach, SizeY + SizeY),
+        Direction.Right => new Rectangle(position.X + SizeX, position.Y - (SizeY / 2f), BlockReach, SizeY + SizeY),
+        Direction.Up => new Rectangle(position.X - (SizeX / 2f), position.Y - BlockReach, SizeX + SizeX, BlockReach),
+        Direction.Down => new Rectangle(position.X - (SizeX / 2f), position.Y + SizeY, SizeX + SizeX, BlockReach),
         _ => new Rectangle(position.X, position.Y, SizeX, SizeY),
     };
 
@@ -50,7 +63,9 @@ class Player
     AttackKind attackKind;
     public Rectangle Bounds => new Rectangle(position.X, position.Y, SizeX, SizeY);
     public Rectangle AttackBounds => IsAttacking ? GetAttackingBoundBox() : new Rectangle(position.X, position.Y, SizeX, SizeY);
+    public Rectangle ParryBounds => IsParrying ? GetBlockBoundBox() : new Rectangle(position.X, position.Y, SizeX, SizeY);
     public bool IsAttacking => state == PlayerState.Attacking;
+    public bool IsParrying => isParrying;
     public bool IsUsingUltimate => IsUltimate;
     public float GetUltimateDamage => 250;
     public float GetMeleeDamage => attackKind == AttackKind.Heavy ? HeavyDamage : LightDamage;
@@ -105,6 +120,13 @@ class Player
         StartSwing(kind);
     }
 
+    public void Block()
+    {
+        if (isParrying || IsAttacking) return;
+        isParrying = true;
+        blockElapsed = 0;
+    }
+
     void StartSwing(AttackKind kind)
     {
         attackKind = kind;
@@ -122,6 +144,7 @@ class Player
         {
             PlayerUlti = 0;
         }
+        Raylib.PlaySound(Assets.UltSound);
         StartSwing(AttackKind.Heavy);
     }
 
@@ -151,6 +174,7 @@ class Player
         else
         {
             animElapsed += dt;
+            blockElapsed += dt;
         }
 
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);
@@ -177,6 +201,10 @@ class Player
 
         TryMove(new Vector2(move.X, 0), obstacles);
         TryMove(new Vector2(0, move.Y), obstacles);
+        if (blockElapsed >= blockDuration)
+        {
+            isParrying = false;
+        }
     }
 
     void TryMove(Vector2 delta, IReadOnlyList<Rectangle> obstacles)
