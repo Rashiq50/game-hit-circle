@@ -103,6 +103,7 @@ class Player
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
         UltimateKills = 0;
+        PlayerUlti = 0;
     }
     public void Resume(float health, float ulti)
     {
