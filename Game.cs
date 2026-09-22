@@ -20,6 +20,7 @@ class Game
     readonly ScorePopup popup = new();
     readonly List<Demon> demons = [];
     readonly List<CoinDrop> coins = [];
+    readonly UltStrike ultStrike = new();
     readonly SlowTimePower slowTime = new();
     Power[] Powers => [slowTime];
     const int PowerSlots = 3;
@@ -98,6 +99,7 @@ class Game
             {
                 demon.Draw();
             }
+            ultStrike.Draw();
             foreach (var coin in coins)
             {
                 coin.Draw();
@@ -344,6 +346,7 @@ class Game
         float worldDt = dt * TimeScale; // everything that is not the player ticks on the (possibly slowed) world clock
 
         player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
+        ultStrike.Update(dt);
         popup.Update(worldDt);
         SpawnEnemies();
 
@@ -352,6 +355,11 @@ class Game
         if (demon != null && demon.IsAlive && player.SwingLanded)
         {
             float damage = player.IsUsingUltimate ? player.GetUltimateDamage : player.GetMeleeDamage;
+            if (player.IsUsingUltimate)
+            {
+                ultStrike.Strike(new Vector2(demon.Center.X, demon.Bounds.Y + demon.Bounds.Height));
+                Shake();
+            }
             if (Math.Max(0, demon.CurrentHp - damage) <= 0)
             {
                 demon.Kill(player);
@@ -444,6 +452,7 @@ class Game
     void CancelUltimateSequence()
     {
         ultimatePhase = UltimatePhase.None;
+        ultStrike.Stop();
         CameraFocus.Release();
         foreach (var dm in demons) dm.ReleaseFromUlt();
     }
@@ -454,11 +463,11 @@ class Game
         {
             case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
                 Demon? target = demons.Find(d => d.IsSelectedForUlt);
-                if (target is null) { CancelUltimateSequence(); break; } // target gone (shouldn't happen: the world is frozen)
+                if (target is null) { CancelUltimateSequence(); break; }
                 player.Ultimate(target.Center);
                 ultimatePhase = UltimatePhase.Attack;
                 break;
-            case UltimatePhase.Attack when !player.IsAttacking:
+            case UltimatePhase.Attack when !player.IsAttacking && !ultStrike.IsPlaying:
                 CancelUltimateSequence();
                 break;
         }

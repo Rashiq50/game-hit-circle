@@ -6,9 +6,12 @@ static class Assets
 {
     const int HeroFrameSize = 80;
     const int DemonFrameSize = 256;
+    // The ultimate's lightning bolt is drawn tall rather than square: one column of sky, one splash on the ground.
+    const int UltStrikeFrameWidth = 256;
+    const int UltStrikeFrameHeight = 512;
 
     public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
-    public static SpriteStrip DemonIdle, DemonDeath;
+    public static SpriteStrip DemonIdle, DemonDeath, UltStrike;
     public static Sound SwordSound, ScoreSound, UltSound, SwordBlockSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
@@ -24,6 +27,7 @@ static class Assets
         Fireball = Raylib.LoadTexture("textures/fireball.png");
         DemonIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), DemonFrameSize);
         DemonDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), DemonFrameSize);
+        UltStrike = new(Raylib.LoadTexture("textures/hero/ult-attack/ult_strike.png"), UltStrikeFrameWidth, UltStrikeFrameHeight);
         HeroIdle = LoadHeroStrips("idle/idle");
         HeroWalk = LoadHeroStrips("walk/walk");
         HeroRun = LoadHeroStrips("run/run");
@@ -42,6 +46,7 @@ static class Assets
         Raylib.UnloadTexture(Fireball);
         Raylib.UnloadTexture(DemonIdle.Texture);
         Raylib.UnloadTexture(DemonDeath.Texture);
+        Raylib.UnloadTexture(UltStrike.Texture);
         foreach (var strip in HeroIdle.Concat(HeroWalk).Concat(HeroRun).Concat(HeroAxe))
             Raylib.UnloadTexture(strip.Texture);
         Raylib.UnloadSound(SwordSound);
