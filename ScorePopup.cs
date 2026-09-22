@@ -8,7 +8,8 @@ class ScorePopup
     const float FadeTime = 0.3f;
     const float Duration = ScaleTime + HoldTime + FadeTime;
     const float DriftSpeed = 20f; // pixels per second
-    const int FontSize = 24;
+    const int FontSize = 16;
+    const int IconGap = 2; // between the coin and the number
     float point = 0;
 
     bool active;
@@ -39,12 +40,15 @@ class ScorePopup
         string text = $"+{point:0.##}";
 
         int fontSize = Math.Max(1, (int)(FontSize * scale));
-        int width = Raylib.MeasureText(text, fontSize);
+        int textWidth = Raylib.MeasureText(text, fontSize);
+        // The coin is drawn as tall as the text, so the whole "(coin) +N" group is centred on the origin.
+        float iconSize = fontSize * 1.5f;
+        float totalWidth = iconSize + IconGap + textWidth;
         float drift = elapsed * DriftSpeed;
-        Raylib.DrawText(text,
-            (int)(origin.X - width / 2f),
-            (int)(origin.Y - fontSize / 2f - drift),
-            fontSize,
-            Raylib.Fade(Color.Green, alpha));
+        float left = origin.X - totalWidth / 2f;
+        float centerY = origin.Y - drift;
+        var tint = Raylib.Fade(Color.Gold, alpha);
+        HudIcons.DrawCoin(new Rectangle(left, centerY - iconSize / 2f, iconSize, iconSize), tint);
+        Raylib.DrawText(text, (int)(left + iconSize + IconGap), (int)(centerY - fontSize / 2f), fontSize, tint);
     }
 }
