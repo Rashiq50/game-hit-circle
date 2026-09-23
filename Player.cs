@@ -33,6 +33,8 @@ class Player
     int BlockReach = 40;
     bool isParrying = false;
 
+    List<ElementalTrail> attackTrails = [];
+
     /// <summary>Rectangle used for melee collision and debugging; keeps the hitbox aligned with the facing direction.</summary>
     Rectangle GetAttackingBoundBox() => facing switch
     {
@@ -171,6 +173,7 @@ class Player
             animElapsed += dt;
             blockElapsed += dt;
         }
+        newTrail.Update(dt);
 
         // The ultimate's swing is a cinematic: holding a movement key mid-strike must not walk the player off the
         // target or spin the facing (and with it the attack box) away from the demon the bolt is coming down on.
@@ -216,6 +219,7 @@ class Player
             if (Raylib.CheckCollisionRecs(o, nextBounds) && !Raylib.CheckCollisionRecs(o, Bounds)) return;
         position = next;
     }
+    ElementalTrail newTrail = new ElementalTrail(ElementType.Fire);
 
     void UpdateAttack(float dt)
     {
@@ -226,6 +230,7 @@ class Player
         {
             state = PlayerState.Idle;
             IsUltimate = false;
+            newTrail.Launch(Center, facing);
         }
     }
 
@@ -262,5 +267,6 @@ class Player
     public void Draw()
     {
         Strip.Draw(CurrentFrame, Center, DrawSize);
+        newTrail.Draw();
     }
 }
