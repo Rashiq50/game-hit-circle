@@ -22,6 +22,14 @@ class ElementalTrail(ElementType elementType)
         _ => Assets.FireTrail,
     };
 
+    float Angle => direction switch
+    {
+        Direction.Down => 90f,
+        Direction.Left => 0f,
+        Direction.Up => 270f,
+        _ => 0f,
+    };
+
     public void Launch(Vector2 from, Direction dr)
     {
         position = from;
@@ -46,7 +54,14 @@ class ElementalTrail(ElementType elementType)
         if (!IsPlaying) return;
         var strip = Strip;
         float height = DrawWidth * strip.FrameHeight / strip.FrameSize;
-        var dest = new Rectangle(position.X - DrawWidth / 2, position.Y - height / 2, DrawWidth, height);
-        strip.Draw(strip.LoopFrame(elapsed, AnimFps), dest);
+        Rectangle source = new Rectangle(strip.LoopFrame(elapsed, AnimFps) * strip.FrameSize, 0, strip.FrameSize, strip.FrameHeight);
+        if (direction is Direction.Left)
+        {
+            source.Width = -source.Width;
+        }
+        Raylib.DrawTexturePro(strip.Texture,
+            source,
+            new Rectangle(position.X, position.Y, DrawWidth, height),
+            new Vector2(DrawWidth / 2, height / 2), Angle, Color.White);
     }
 }
