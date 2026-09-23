@@ -79,14 +79,14 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void ReceiveDamage(float damage, Player player)
     {
+        // Above the body, not on it, so the number never sits under the sprite or the health bar.
+        FloatingNumbers.Show(new Vector2(Center.X, Center.Y - visualTop * 0.5f), damage,
+            player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit);
         CurrentHp = Math.Max(0, CurrentHp - damage);
-        if (Math.Max(0, CurrentHp - damage) <= 0)
+        if (CurrentHp <= 0 && state != EnemyState.Dying)
         {
             Kill(player);
-            // SaveProgress();
-            // score += enemy.ScorePoint;
-            // popup.Show(enemy.Center, enemy.ScorePoint);
-            var coin =  new CoinDrop(Center, pointDrop);
+            var coin = new CoinDrop(Center, pointDrop);
             Game.AddCoin(coin);
         }
     }

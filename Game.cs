@@ -110,6 +110,7 @@ class Game
                 coin.Draw();
             }
             popup.Draw();
+            FloatingNumbers.Draw(); // on top of the bodies, so a number is never hidden behind a sprite
         }
         if (showCollision) CollisionMap.Draw();
         if (showHitBoxes && state is GameState.Playing or GameState.Paused) DrawHitBoxes();
@@ -228,6 +229,7 @@ class Game
     void BeginStage()
     {
         enemies.Clear();
+        FloatingNumbers.Clear();
         spawned = 0;
         int total = CurrentStage.TotalEnemies;
         ShowBanner($"Stage {stage}", $"{total} enem{(total == 1 ? "y" : "ies")} incoming");
@@ -353,11 +355,12 @@ class Game
         player.Update(dt, enemies.Where(e => e.IsAlive).Select(e => e.Bounds).ToList(), enemies);
         ultStrike.Update(dt);
         popup.Update(worldDt);
+        FloatingNumbers.Update(worldDt);
         SpawnEnemies();
 
         var enemy = player.IsUsingUltimate
             ? enemies.Find(e => e.IsSelectedForUlt)
-            : enemies.Find(e => e.Overlaps(player.Bounds));
+            : enemies.Find(e => e.Overlaps(player.AttackBounds));
 
         if (enemy != null && enemy.IsAlive && player.SwingLanded)
         {

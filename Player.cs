@@ -145,7 +145,16 @@ class Player
         StartSwing(AttackKind.Heavy);
     }
 
-    public void ReceiveDamage(float damage) => PlayerCurrentHp = !GodMode ? Math.Max(0, PlayerCurrentHp - damage) : PlayerHealth;
+    public void ReceiveDamage(float damage)
+    {
+        if (GodMode)
+        {
+            PlayerCurrentHp = PlayerHealth;
+            return; // nothing landed, so nothing to float
+        }
+        PlayerCurrentHp = Math.Max(0, PlayerCurrentHp - damage);
+        FloatingNumbers.Show(new Vector2(Center.X, Center.Y - SizeY / 2f), damage, DamageStyle.PlayerHit);
+    }
 
     public void ToggleGodMode()
     {
