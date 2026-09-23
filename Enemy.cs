@@ -176,7 +176,6 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         float ry = Math.Max(4f, rx * 0.35f);
         int x = (int)Center.X, y = (int)(Center.Y + halfSize.Y * scale - ry * 0.5f);
         float alpha = 1f - death;
-        // Two ellipses: a wide faint one and a tighter darker core, so the edge reads soft instead of a hard disc.
         Raylib.DrawEllipse(x, y, rx, ry, Raylib.Fade(Color.Black, 0.18f * alpha));
         Raylib.DrawEllipse(x, y, rx * 0.65f, ry * 0.65f, Raylib.Fade(Color.Black, 0.22f * alpha));
     }
