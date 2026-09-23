@@ -1,10 +1,10 @@
 using System.Numerics;
 using Raylib_cs;
 
-class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
+class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
 {
     // Debug values
-    /// <summary>Global aggro switch (F3 in-game): when false demons never fire at the player.</summary>
+    /// <summary>Global aggro switch (F3 in-game): when false enemies never fire at the player.</summary>
     public static bool AggroEnabled = true;
     //
     const float SpriteRadius = 25f; // hit box of the sprite look; the strip has a lot of transparent padding around the body
@@ -26,19 +26,19 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     readonly float visualTop = look == EnemyLook.Sprite ? DrawSize / 2 : EnemyIcons.TopExtent(look) * IconRadius * EnemyIcons.BodyScale(look);
     /// <summary>Mouse pick radius while choosing an ultimate target; roomier than the hit box so it's easy to land on.</summary>
     float TargetRadius => Math.Max(MinTargetRadius, Math.Max(halfSize.X, halfSize.Y) + TargetMargin);
-    DemonState state = DemonState.Idle;
+    EnemyState state = EnemyState.Idle;
     float animElapsed;
     float fireCooldown;
     bool SelectedForUlt = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
-    // Shots already in flight outlive the demon that fired them; they only vanish off-screen or on hit.
+    // Shots already in flight outlive the enemy that fired them; they only vanish off-screen or on hit.
     readonly List<EnemyProjectile> projectiles = [];
 
     // Attributes
     public float CurrentHp = health - 0;
     public float HealthFraction => Math.Clamp(CurrentHp / health, 0f, 1f);
-    public bool IsAlive => state == DemonState.Idle;
-    public bool IsDead => state == DemonState.Dying && animElapsed > DeathDuration;
+    public bool IsAlive => state == EnemyState.Idle;
+    public bool IsDead => state == EnemyState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
 
     Rectangle BoundsAt(Vector2 center) =>
@@ -63,16 +63,16 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void Kill(Player player)
     {
-        state = DemonState.Dying;
+        state = EnemyState.Dying;
         animElapsed = 0;
         if (!player.IsUsingUltimate) player.ReceivePower(powerDrop);
     }
 
-    /// <param name="others">Demons already on the field, so this one doesn't land on a spawn point one of them is standing on.</param>
-    public void Respawn(Player player, IEnumerable<Demon> others)
+    /// <param name="others">Enemys already on the field, so this one doesn't land on a spawn point one of them is standing on.</param>
+    public void Respawn(Player player, IEnumerable<Enemy> others)
     {
         Center = World.RandomEnemySpawn(others.Where(d => d != this && d.IsAlive).Select(d => d.Bounds).Prepend(player.Bounds));
-        state = DemonState.Idle;
+        state = EnemyState.Idle;
         animElapsed = 0;
         fireCooldown = FireInterval;
     }
@@ -81,7 +81,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void ClearProjectiles() => projectiles.Clear();
 
-    /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the demon is frozen.</summary>
+    /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the enemy is frozen.</summary>
     public void UpdateHover(bool hovered, float dt)
     {
         float step = dt / HoverEaseTime;
@@ -152,8 +152,8 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         DrawShadow(scale);
         if (look == EnemyLook.Sprite)
         {
-            var strip = state == DemonState.Dying ? Assets.DemonDeath : Assets.DemonIdle;
-            int frame = state == DemonState.Dying
+            var strip = state == EnemyState.Dying ? Assets.EnemyDeath : Assets.EnemyIdle;
+            int frame = state == EnemyState.Dying
                 ? strip.OneShotFrame(animElapsed, DeathDuration)
                 : strip.LoopFrame(animElapsed, IdleFps);
             strip.Draw(frame, Center, DrawSize * scale);
@@ -161,7 +161,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         else
         {
             // No death strip for the primitive looks: they shrink and fade out over the same window instead.
-            float death = state == DemonState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
+            float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
             EnemyIcons.Draw(look, Center, IconRadius * scale * (1f - 0.5f * death), animElapsed, 1f - death);
         }
         if (IsAlive) DrawHealthBar();
@@ -171,7 +171,7 @@ class Demon(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     /// <summary>A soft ground shadow under the feet so the body separates from the background; fades out with the death animation.</summary>
     void DrawShadow(float scale)
     {
-        float death = state == DemonState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
+        float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
         float rx = halfSize.X * 0.9f * scale * (1f - 0.5f * death);
         float ry = Math.Max(4f, rx * 0.35f);
         int x = (int)Center.X, y = (int)(Center.Y + halfSize.Y * scale - ry * 0.5f);

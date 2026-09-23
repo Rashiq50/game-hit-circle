@@ -176,7 +176,7 @@ class Player
         newTrail.Update(dt);
 
         // The ultimate's swing is a cinematic: holding a movement key mid-strike must not walk the player off the
-        // target or spin the facing (and with it the attack box) away from the demon the bolt is coming down on.
+        // target or spin the facing (and with it the attack box) away from the enemy the bolt is coming down on.
         if (attacking && IsUltimate) return;
 
         bool boosting = Raylib.IsKeyDown(KeyboardKey.LeftShift);

@@ -5,13 +5,13 @@ using Raylib_cs;
 static class Assets
 {
     const int HeroFrameSize = 80;
-    const int DemonFrameSize = 256;
+    const int EnemyFrameSize = 256;
     // The ultimate's lightning bolt is drawn tall rather than square: one column of sky, one splash on the ground.
     const int UltStrikeFrameWidth = 256;
     const int UltStrikeFrameHeight = 512;
 
     public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
-    public static SpriteStrip DemonIdle, DemonDeath, UltStrike, FireTrail, IceTrail, MagicTrail;
+    public static SpriteStrip EnemyIdle, EnemyDeath, UltStrike, FireTrail, IceTrail, MagicTrail;
     public static Sound SwordSound, ScoreSound, UltSound, SwordBlockSound;
 
     public static Color OverlayBlack = new Color(0, 0, 0, 200);
@@ -25,8 +25,8 @@ static class Assets
         WelcomBackground = Raylib.LoadTexture("textures/welcome.png");
         MainMenuBackground = Raylib.LoadTexture("textures/mainmenu.png");
         Fireball = Raylib.LoadTexture("textures/fireball.png");
-        DemonIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), DemonFrameSize);
-        DemonDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), DemonFrameSize);
+        EnemyIdle = new(Raylib.LoadTexture("textures/Enemy-Melee-Idle-S.png"), EnemyFrameSize);
+        EnemyDeath = new(Raylib.LoadTexture("textures/Enemy-Melee-Death.png"), EnemyFrameSize);
         UltStrike = new(Raylib.LoadTexture("textures/hero/ult-attack/ult_strike.png"), UltStrikeFrameWidth, UltStrikeFrameHeight);
         HeroIdle = LoadHeroStrips("idle/idle");
         HeroWalk = LoadHeroStrips("walk/walk");
@@ -47,8 +47,8 @@ static class Assets
         Raylib.UnloadTexture(WelcomBackground);
         Raylib.UnloadTexture(MainMenuBackground);
         Raylib.UnloadTexture(Fireball);
-        Raylib.UnloadTexture(DemonIdle.Texture);
-        Raylib.UnloadTexture(DemonDeath.Texture);
+        Raylib.UnloadTexture(EnemyIdle.Texture);
+        Raylib.UnloadTexture(EnemyDeath.Texture);
         Raylib.UnloadTexture(UltStrike.Texture);
         Raylib.UnloadTexture(FireTrail.Texture);
         Raylib.UnloadTexture(IceTrail.Texture);

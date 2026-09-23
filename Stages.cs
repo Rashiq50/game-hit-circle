@@ -1,4 +1,4 @@
-/// <summary>One demon as a stage defines it; mirrors <see cref="Demon"/>'s constructor so a stage can spawn it directly.</summary>
+/// <summary>One enemy as a stage defines it; mirrors <see cref="Enemy"/>'s constructor so a stage can spawn it directly.</summary>
 record EnemyDef(
     float Health,
     int PointDrop,
@@ -9,7 +9,7 @@ record EnemyDef(
     float ProjectileSpeed = 280f,
     EnemyLook Look = EnemyLook.Sprite)
 {
-    public Demon Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, Look);
+    public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, Look);
 }
 
 static class Enemies

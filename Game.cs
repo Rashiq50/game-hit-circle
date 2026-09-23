@@ -18,7 +18,7 @@ class Game
 
     readonly Player player = new();
     readonly ScorePopup popup = new();
-    readonly List<Demon> demons = [];
+    readonly List<Enemy> enemies = [];
     readonly List<CoinDrop> coins = [];
     readonly UltStrike ultStrike = new();
     readonly SlowTimePower slowTime = new();
@@ -30,7 +30,7 @@ class Game
     // Checkpoint = state at the start of the current stage; only a stage clear moves it forward.
     SaveData checkpoint = SaveFile.Load();
     int stage;
-    int spawned; // demons of the current stage's roster that have entered the field so far
+    int spawned; // enemies of the current stage's roster that have entered the field so far
     StageDef CurrentStage => Stages.Get(stage);
     const float BannerDuration = 1.8f;
     const float BannerFadeIn = 0.2f;
@@ -60,7 +60,7 @@ class Game
             else showCollision = !showCollision;
         }
         if (Raylib.IsKeyPressed(KeyboardKey.F2)) showHitBoxes = !showHitBoxes;
-        if (Raylib.IsKeyPressed(KeyboardKey.F3)) Demon.AggroEnabled = !Demon.AggroEnabled;
+        if (Raylib.IsKeyPressed(KeyboardKey.F3)) Enemy.AggroEnabled = !Enemy.AggroEnabled;
         if (Raylib.IsKeyPressed(KeyboardKey.F4)) player.ToggleGodMode();
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
@@ -95,9 +95,9 @@ class Game
         if (state is GameState.Playing or GameState.Paused)
         {
             player.Draw();
-            foreach (var demon in demons)
+            foreach (var enemy in enemies)
             {
-                demon.Draw();
+                enemy.Draw();
             }
             ultStrike.Draw();
             foreach (var coin in coins)
@@ -115,8 +115,8 @@ class Game
         Raylib.DrawRectangleLinesEx(player.Bounds, 2, Color.Lime);
         Raylib.DrawRectangleLinesEx(player.AttackBounds, 1, Color.DarkPurple);
         Raylib.DrawRectangleLinesEx(player.ParryBounds, 1, Color.DarkGreen);
-        foreach (var demon in demons)
-            Raylib.DrawRectangleLinesEx(demon.Bounds, 2, demon.IsAlive ? Color.Red : Color.Gray);
+        foreach (var enemy in enemies)
+            Raylib.DrawRectangleLinesEx(enemy.Bounds, 2, enemy.IsAlive ? Color.Red : Color.Gray);
     }
 
     public void DrawUi()
@@ -163,7 +163,7 @@ class Game
             ("Shift+F1", "Debug key list", showDebugHelp),
             ("F1", "Collision map", showCollision),
             ("F2", "Hit boxes", showHitBoxes),
-            ("F3", "Enemy aggro", Demon.AggroEnabled),
+            ("F3", "Enemy aggro", Enemy.AggroEnabled),
             ("F4", "Player god mode", Player.GodMode),
             ("F11", "Borderless fullscreen", null),
         ];
@@ -219,13 +219,13 @@ class Game
         foreach (var power in Powers) power.Reset();
     }
 
-    /// <summary>Wipes the field and restarts the current stage's roster from its first demon.</summary>
+    /// <summary>Wipes the field and restarts the current stage's roster from its first enemy.</summary>
     void BeginStage()
     {
-        demons.Clear();
+        enemies.Clear();
         spawned = 0;
         int total = CurrentStage.TotalEnemies;
-        ShowBanner($"Stage {stage}", $"{total} demon{(total == 1 ? "" : "s")} incoming");
+        ShowBanner($"Stage {stage}", $"{total} enem{(total == 1 ? "y" : "ies")} incoming");
     }
 
     void ShowBanner(string title, string subtitle = "", Action? then = null)
@@ -250,15 +250,15 @@ class Game
     {
         if (BannerShowing) return;
         var def = CurrentStage;
-        if (spawned < def.TotalEnemies && demons.Count < def.MaxAtOnce)
+        if (spawned < def.TotalEnemies && enemies.Count < def.MaxAtOnce)
         {
-            Demon demon = def.Enemies[spawned++].Spawn();
-            demon.Respawn(player, demons);
-            demons.Add(demon);
+            Enemy enemy = def.Enemies[spawned++].Spawn();
+            enemy.Respawn(player, enemies);
+            enemies.Add(enemy);
         }
     }
 
-    bool StageCleared => spawned >= CurrentStage.TotalEnemies && demons.Count == 0;
+    bool StageCleared => spawned >= CurrentStage.TotalEnemies && enemies.Count == 0;
 
     void AdvanceStage()
     {
@@ -333,7 +333,7 @@ class Game
             return;
         }
 
-        bool cinematic = ultimatePhase != UltimatePhase.None; // the demon is frozen while the ultimate plays out
+        bool cinematic = ultimatePhase != UltimatePhase.None; // the enemy is frozen while the ultimate plays out
 
         if (!cinematic)
         {
@@ -345,53 +345,53 @@ class Game
         foreach (var power in Powers) power.Update(dt);
         float worldDt = dt * TimeScale; // everything that is not the player ticks on the (possibly slowed) world clock
 
-        player.Update(dt, demons.Where(d => d.IsAlive).Select(d => d.Bounds).ToList());
+        player.Update(dt, enemies.Where(e => e.IsAlive).Select(e => e.Bounds).ToList());
         ultStrike.Update(dt);
         popup.Update(worldDt);
         SpawnEnemies();
 
-        var demon = player.IsUsingUltimate
-            ? demons.Find(d => d.IsSelectedForUlt)
-            : demons.Find(d => d.Overlaps(player));
+        var enemy = player.IsUsingUltimate
+            ? enemies.Find(e => e.IsSelectedForUlt)
+            : enemies.Find(e => e.Overlaps(player));
 
-        if (demon != null && demon.IsAlive && player.SwingLanded)
+        if (enemy != null && enemy.IsAlive && player.SwingLanded)
         {
             float damage = player.IsUsingUltimate ? player.GetUltimateDamage : player.GetMeleeDamage;
             if (player.IsUsingUltimate)
             {
-                ultStrike.Strike(new Vector2(demon.Center.X, demon.Bounds.Y + demon.Bounds.Height));
+                ultStrike.Strike(new Vector2(enemy.Center.X, enemy.Bounds.Y + enemy.Bounds.Height));
                 Shake();
             }
-            if (Math.Max(0, demon.CurrentHp - damage) <= 0)
+            if (Math.Max(0, enemy.CurrentHp - damage) <= 0)
             {
-                demon.Kill(player);
+                enemy.Kill(player);
                 SaveProgress();
-                // score += demon.ScorePoint;
-                // popup.Show(demon.Center, demon.ScorePoint);
-                var coin = new CoinDrop(demon.Center, demon.ScorePoint);
+                // score += enemy.ScorePoint;
+                // popup.Show(enemy.Center, enemy.ScorePoint);
+                var coin = new CoinDrop(enemy.Center, enemy.ScorePoint);
                 coins.Add(coin);
             }
-            demon.ReceiveDamage(damage);
+            enemy.ReceiveDamage(damage);
         }
 
-        foreach (var dm in demons)
+        foreach (var en in enemies)
         {
-            dm.UpdateHover(false, dt);
-            dm.Update(worldDt, player, holdFire: cinematic);
+            en.UpdateHover(false, dt);
+            en.Update(worldDt, player, holdFire: cinematic);
             if (!cinematic)
             {
-                if (dm.ConsumeProjectileHit(player))
+                if (en.ConsumeProjectileHit(player))
                 {
                     Shake();
                 }
-                else if (dm.BlockProjectile(player))
+                else if (en.BlockProjectile(player))
                 {
                     score += 1;
                     popup.Show(player.Center, 2);
                 }
             }
         }
-        demons.RemoveAll(p => p.IsDead);
+        enemies.RemoveAll(p => p.IsDead);
 
         // coin drop parts
         foreach (var coin in coins)
@@ -412,11 +412,11 @@ class Game
             ShowBanner($"Stage {stage} complete!", then: AdvanceStage);
     }
 
-    /// <summary>The world is frozen; only the hover highlight animates until the player clicks a demon.</summary>
+    /// <summary>The world is frozen; only the hover highlight animates until the player clicks an enemy.</summary>
     void UpdateTargeting(float dt)
     {
-        Demon? hovered = HoveredTarget();
-        foreach (var dm in demons) dm.UpdateHover(dm == hovered, dt);
+        Enemy? hovered = HoveredTarget();
+        foreach (var en in enemies) en.UpdateHover(en == hovered, dt);
 
         if (hovered != null && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
@@ -425,30 +425,30 @@ class Game
         }
     }
 
-    Demon? HoveredTarget()
+    Enemy? HoveredTarget()
     {
         Vector2 mouse = World.MousePosition();
-        return demons.Find(d => d.IsAlive && d.IsUnderCursor(mouse));
+        return enemies.Find(e => e.IsAlive && e.IsUnderCursor(mouse));
     }
 
-    // void StartSwing(Demon demon)
+    // void StartSwing(Enemy enemy)
     // {
-    //     score += demon.ScorePoint;
+    //     score += enemy.ScorePoint;
     //     // bonusTime = Math.Min(SecondsLeft, MaxBonusTime);
     // }
 
     // The ultimate starts with a frozen target pick (F when the meter is full), then plays a short cinematic:
-    // zoom onto the demon, then teleport and swing, then zoom back out.
+    // zoom onto the enemy, then teleport and swing, then zoom back out.
     enum UltimatePhase { None, Targeting, ZoomIn, Attack }
     UltimatePhase ultimatePhase;
     bool IsTargeting => ultimatePhase == UltimatePhase.Targeting;
 
-    void StartUltimate(Demon demon)
+    void StartUltimate(Enemy enemy)
     {
         // Raylib.SetSoundVolume(Assets.SwordSound, 0.3f);
         // Raylib.PlaySound(Assets.SwordSound);
         ultimatePhase = UltimatePhase.ZoomIn;
-        CameraFocus.Focus(demon.Center);
+        CameraFocus.Focus(enemy.Center);
     }
 
     void CancelUltimateSequence()
@@ -456,7 +456,7 @@ class Game
         ultimatePhase = UltimatePhase.None;
         ultStrike.Stop();
         CameraFocus.Release();
-        foreach (var dm in demons) dm.ReleaseFromUlt();
+        foreach (var en in enemies) en.ReleaseFromUlt();
     }
 
     void UpdateUltimateSequence()
@@ -464,7 +464,7 @@ class Game
         switch (ultimatePhase)
         {
             case UltimatePhase.ZoomIn when CameraFocus.IsSettled:
-                Demon? target = demons.Find(d => d.IsSelectedForUlt);
+                Enemy? target = enemies.Find(e => e.IsSelectedForUlt);
                 if (target is null) { CancelUltimateSequence(); break; }
                 player.Ultimate(target.Center);
                 ultimatePhase = UltimatePhase.Attack;
@@ -587,8 +587,8 @@ class Game
         HudIcons.DrawCoin(new Rectangle(ScreenMargin - 6, ScreenMargin - 6, scoreFontSize + 12, scoreFontSize + 12), Color.Gold);
         Raylib.DrawText($"{score}", ScreenMargin + scoreFontSize + 6, ScreenMargin, scoreFontSize, Color.White);
         // Raylib.DrawText($"High: {highScore}", ScreenMargin + 140, ScreenMargin, scoreFontSize, Color.Gold);
-        int demonsLeft = CurrentStage.TotalEnemies - spawned + demons.Count(d => d.IsAlive);
-        Raylib.DrawText($"Stage {stage}/{Stages.Count}   Enemies left: {demonsLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
+        int enemiesLeft = CurrentStage.TotalEnemies - spawned + enemies.Count(e => e.IsAlive);
+        Raylib.DrawText($"Stage {stage}/{Stages.Count}   Enemies left: {enemiesLeft}", ScreenMargin, ScreenMargin + 26, 18, Color.LightGray);
         // Raylib.DrawText($"Time: {SecondsLeft:D2}", 20, 40, 16, Color.White);
         // Raylib.DrawText($"FPS: {Raylib.GetFPS()}", Screen.Width - 100, 20, 14, Color.DarkGray);
         DrawHealthBar();
@@ -598,10 +598,10 @@ class Game
         DrawUltimateHint();
         if (slowTime.IsActive) DrawSlowTimeTint();
         int cheatY = ScreenMargin + 48;
-        if (!Demon.AggroEnabled)
+        if (!Enemy.AggroEnabled)
             Raylib.DrawText("Enemy aggro OFF [F3]", ScreenMargin, cheatY, 18, Color.Orange);
         if (Player.GodMode)
-            Raylib.DrawText("God mode ON [F4]", ScreenMargin, cheatY + (Demon.AggroEnabled ? 0 : 22), 18, Color.Orange);
+            Raylib.DrawText("God mode ON [F4]", ScreenMargin, cheatY + (Enemy.AggroEnabled ? 0 : 22), 18, Color.Orange);
     }
 
     void DrawUltimateHint()

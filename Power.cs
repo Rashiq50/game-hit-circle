@@ -59,7 +59,7 @@ abstract class Power(KeyboardKey key, string keyLabel, string name, float durati
     public abstract void DrawIcon(Rectangle slot, Color tint);
 }
 
-/// <summary>[1] Everything but the player runs at half speed: demons, their shots and the popups.</summary>
+/// <summary>[1] Everything but the player runs at half speed: enemies, their shots and the popups.</summary>
 class SlowTimePower() : Power(KeyboardKey.One, "1", "Slow time", duration: 5f, cooldown: 10f)
 {
     public const float Scale = 0.5f;

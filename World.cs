@@ -47,7 +47,7 @@ static class World
 
     /// <summary>
     /// Picks a map spawn point whose clearance square is free of every rectangle in <paramref name="occupied"/>
-    /// (the player and the demons already on the field). Every point is tried once in random order, so a free
+    /// (the player and the enemies already on the field). Every point is tried once in random order, so a free
     /// point is always found when one exists; only when all are taken does it fall back to a random one.
     /// </summary>
     public static Vector2 RandomEnemySpawn(IEnumerable<Rectangle> occupied)

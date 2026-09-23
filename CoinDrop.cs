@@ -1,13 +1,13 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>A coin a demon leaves behind. It hops out on drop, bobs and spins while waiting, and flies into the player on pickup.</summary>
+/// <summary>A coin an enemy leaves behind. It hops out on drop, bobs and spins while waiting, and flies into the player on pickup.</summary>
 class CoinDrop
 {
     const float Size = 30f; // drawn size of the coin
     const float DropDuration = 0.55f; // time from spawn until the coin has settled
     const float DropHeight = 40f; // peak of the hop above the rest position
-    const float ScatterDistance = 28f; // how far the coin skids from where the demon died
+    const float ScatterDistance = 28f; // how far the coin skids from where the enemy died
     const float PickUpDuration = 0.28f;
     const float BobHeight = 3f;
     const float BobSpeed = 4f;
