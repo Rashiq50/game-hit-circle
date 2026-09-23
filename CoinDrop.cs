@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>A coin an enemy leaves behind. It hops out on drop, bobs and spins while waiting, and flies into the player on pickup.</summary>
+/// <summary>A coin an enemy leaves behind. It hops out on drop, bobs and spins while waiting, and shrinks away on pickup.</summary>
 class CoinDrop
 {
     const float Size = 30f; // drawn size of the coin
@@ -9,6 +9,7 @@ class CoinDrop
     const float DropHeight = 40f; // peak of the hop above the rest position
     const float ScatterDistance = 28f; // how far the coin skids from where the enemy died
     const float PickUpDuration = 0.28f;
+    const float PickUpRise = 14f; // how far the coin floats up while it shrinks away
     const float BobHeight = 3f;
     const float BobSpeed = 4f;
     const float SpinSpeed = 3.5f;
@@ -21,8 +22,6 @@ class CoinDrop
     Vector2 center;
     float age; // seconds since the drop, drives the drop and idle animations
     float pickUpTime; // seconds since pickup started
-    Vector2 pickUpFrom;
-    Vector2 pickUpTarget;
     bool isPickedup;
     bool isPickingUp;
 
@@ -39,7 +38,7 @@ class CoinDrop
     public bool PickedUp => isPickedup;
     public bool PickingdUp => isPickingUp;
     public int ScorePoint => scorePoint;
-    /// <summary>The coin can be collected only once it has landed and is not already flying to the player.</summary>
+    /// <summary>The coin can be collected only once it has landed and is not already being consumed.</summary>
     public bool Collectable => !isPickingUp && !isPickedup && age >= DropDuration;
 
     public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.Bounds);
@@ -49,16 +48,14 @@ class CoinDrop
     Rectangle BoundsAt(Vector2 center) =>
         new(center.X - halfSize.X, center.Y - halfSize.Y, halfSize.X * 2, halfSize.Y * 2);
 
-    public void Update(float dt, Vector2 playerCenter)
+    public void Update(float dt)
     {
         age += dt;
         if (isPickingUp)
         {
+            // The coin is consumed where it lies: it never travels, so there is nothing to steer.
             pickUpTime += dt;
-            pickUpTarget = playerCenter; // keep chasing the player so the coin never misses
-            float t = Math.Clamp(pickUpTime / PickUpDuration, 0f, 1f);
-            center = Vector2.Lerp(pickUpFrom, pickUpTarget, t * t); // ease in: slow start, fast arrival
-            if (t >= 1f) FinishPickUp();
+            if (pickUpTime >= PickUpDuration) FinishPickUp();
             return;
         }
         // Slide along the ground while airborne, then rest.
@@ -76,10 +73,10 @@ class CoinDrop
         if (isPickingUp)
         {
             float t = Math.Clamp(pickUpTime / PickUpDuration, 0f, 1f);
-            scale = 1f + 0.3f * MathF.Sin(t * MathF.PI) - 0.6f * t; // brief swell, then shrink into the player
+            scale = Math.Max(0f, 1f + 0.35f * MathF.Sin(t * MathF.PI) - t); // brief swell, then shrink to nothing
             alpha = 1f - t * t;
-            lift = 0f;
-            widthScale = MathF.Abs(MathF.Cos(age * SpinSpeed * 3f)); // spin fast on the way in
+            lift = BobHeight + PickUpRise * t; // drifts up a little as it goes
+            widthScale = MathF.Abs(MathF.Cos(age * SpinSpeed * 3f)); // spins fast as it is consumed
         }
         else if (age < DropDuration)
         {
@@ -121,8 +118,6 @@ class CoinDrop
         if (isPickingUp || isPickedup) return;
         isPickingUp = true;
         pickUpTime = 0f;
-        pickUpFrom = center;
-        pickUpTarget = center;
     }
 
     public void FinishPickUp()

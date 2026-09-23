@@ -8,7 +8,7 @@ class ScorePopup
     const float FadeTime = 0.3f;
     const float Duration = ScaleTime + HoldTime + FadeTime;
     const float DriftSpeed = 20f; // pixels per second
-    const int FontSize = 16;
+    const int FontSize = 12;
     const int IconGap = 2; // between the coin and the number
     float point = 0;
 

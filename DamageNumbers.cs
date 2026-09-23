@@ -1,13 +1,8 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>Who took the hit; picks the colour and weight of the floating number.</summary>
 enum DamageStyle { EnemyHit, CriticalHit, PlayerHit, Heal }
 
-/// <summary>
-/// One rising damage number. Unlike <see cref="ScorePopup"/> these are pooled in a list, so every hit in a
-/// busy frame gets its own number instead of stealing the single popup slot.
-/// </summary>
 class FloatingNumber
 {
     const float PopTime = 0.10f; // scale-in, overshooting a little so the hit reads as a punch
@@ -17,7 +12,7 @@ class FloatingNumber
     const float Overshoot = 1.25f; // peak scale at the end of the pop
     const float RiseSpeed = 90f; // initial upward speed, in world pixels per second
     const float Damping = 2.6f; // the rise eases off instead of running away up the screen
-    const int BaseFontSize = 18;
+    const int BaseFontSize = 14;
     const int OutlineThickness = 1; // a dark rim so numbers stay readable over light floor tiles
 
     readonly string text;
@@ -77,13 +72,13 @@ class FloatingNumber
     }
 }
 
-/// <summary>Every floating number on the field. World-space, so they pan and zoom with the camera.</summary>
+///Every floating number on the field. World-space, so they pan and zoom with the camera
 static class FloatingNumbers
 {
     const int MaxOnScreen = 48; // a hard cap so a big multi-hit frame can't flood the field
     const float SpreadX = 16f; // random horizontal jitter, so numbers stacked on one entity stay readable
     const float DriftSpeed = 26f; // sideways speed given to that jitter
-    /// <summary>Damage that counts as a "full size" number; bigger hits grow a little past it.</summary>
+    /// Damage that counts as a "full size" number; bigger hits grow a little past it.
     const float ReferenceDamage = 60f;
 
     static readonly List<FloatingNumber> numbers = [];
@@ -111,6 +106,6 @@ static class FloatingNumbers
         foreach (var n in numbers) n.Draw();
     }
 
-    /// <summary>Wipes the field, e.g. when a stage restarts.</summary>
+    ///Wipes the field, e.g. when a stage restarts.
     public static void Clear() => numbers.Clear();
 }

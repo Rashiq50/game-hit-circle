@@ -395,12 +395,12 @@ class Game
         // coin drop parts
         foreach (var coin in coins)
         {
-            coin.Update(worldDt, player.Center);
+            coin.Update(worldDt);
             if (coin.Collectable && coin.Overlaps(player)) coin.StartPickUp();
-            if (coin.PickedUp) // the coin has reached the player: award it
+            if (coin.PickedUp) // the coin has finished shrinking away: award it
             {
                 score += coin.ScorePoint;
-                popup.Show(player.Center, coin.ScorePoint);
+                popup.Show(coin.Center, coin.ScorePoint);
                 Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
                 Raylib.PlaySound(Assets.ScoreSound);
             }
