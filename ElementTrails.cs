@@ -1,19 +1,23 @@
 using System.Numerics;
 using Raylib_cs;
 
-class ElementalTrail(ElementType elementType)
+class ElementalTrail(ElementType elementType, Vector2 from, Direction dr)
 {
-    const float Lifetime = 4f;
+    const float Lifetime = 2f;
     const float Speed = 700f;
     const float AnimFps = 12f;
     const float DrawWidth = 70f;
 
-    Direction direction = Direction.Right;
+    readonly Direction direction = dr;
 
-    float elapsed = Lifetime;
-    Vector2 position;
+    float elapsed = 0;
+    bool Active = true;
+    Vector2 position = from;
 
     public bool IsPlaying => elapsed < Lifetime;
+    public bool IsActive => Active;
+
+    public Rectangle Bounds => new(position.X, position.Y, DrawWidth, DrawWidth);
 
     SpriteStrip Strip => elementType switch
     {
@@ -30,14 +34,7 @@ class ElementalTrail(ElementType elementType)
         _ => 0f,
     };
 
-    public void Launch(Vector2 from, Direction dr)
-    {
-        position = from;
-        elapsed = 0;
-        direction = dr;
-    }
-
-    public void Stop() => elapsed = Lifetime;
+    public void Stop() => Active = false;
 
     public void Update(float dt)
     {
@@ -47,6 +44,10 @@ class ElementalTrail(ElementType elementType)
         else if (direction is Direction.Up) position.Y -= Speed * dt;
         else if (direction is Direction.Down) position.Y += Speed * dt;
         elapsed += dt;
+        if (elapsed >= Lifetime)
+        {
+            Active = false;
+        }
     }
 
     public void Draw()

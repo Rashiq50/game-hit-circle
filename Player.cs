@@ -159,7 +159,7 @@ class Player
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
     public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
 
-    public void Update(float dt, IReadOnlyList<Rectangle> obstacles)
+    public void Update(float dt, IReadOnlyList<Rectangle> obstacles, IReadOnlyList<Enemy> enemies)
     {
         SwingLanded = false;
         bool attacking = IsAttacking;
@@ -173,7 +173,25 @@ class Player
             animElapsed += dt;
             blockElapsed += dt;
         }
-        newTrail.Update(dt);
+
+        foreach (var en in enemies)
+        {
+            foreach (var trail in attackTrails)
+            {
+                if (en.Overlaps(trail.Bounds))
+                {
+                    en.ReceiveDamage(10, this);
+                    trail.Stop();
+                }
+            }
+        }
+
+        foreach (var item in attackTrails)
+        {
+            item.Update(dt);
+        }
+
+        attackTrails.RemoveAll(el => !el.IsActive);
 
         // The ultimate's swing is a cinematic: holding a movement key mid-strike must not walk the player off the
         // target or spin the facing (and with it the attack box) away from the enemy the bolt is coming down on.
@@ -219,7 +237,6 @@ class Player
             if (Raylib.CheckCollisionRecs(o, nextBounds) && !Raylib.CheckCollisionRecs(o, Bounds)) return;
         position = next;
     }
-    ElementalTrail newTrail = new ElementalTrail(ElementType.Fire);
 
     void UpdateAttack(float dt)
     {
@@ -230,7 +247,9 @@ class Player
         {
             state = PlayerState.Idle;
             IsUltimate = false;
-            newTrail.Launch(Center, facing);
+            // newTrail.Launch(Center, facing);
+            ElementalTrail newTrail = new(ElementType.Fire, Center, facing);
+            attackTrails.Add(newTrail);
         }
     }
 
@@ -267,6 +286,9 @@ class Player
     public void Draw()
     {
         Strip.Draw(CurrentFrame, Center, DrawSize);
-        newTrail.Draw();
+        foreach (var item in attackTrails)
+        {
+            item.Draw();
+        }
     }
 }

@@ -30,8 +30,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     float animElapsed;
     float fireCooldown;
     bool SelectedForUlt = false;
+    bool TakingDamageFromTrails = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
-    // Shots already in flight outlive the enemy that fired them; they only vanish off-screen or on hit.
     readonly List<EnemyProjectile> projectiles = [];
 
     // Attributes
@@ -47,7 +47,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
     /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
     public bool IsUnderCursor(Vector2 p) => Raylib.CheckCollisionPointCircle(p, Center, TargetRadius);
-    public bool Overlaps(Player player) => Raylib.CheckCollisionRecs(Bounds, player.AttackBounds);
+    public bool Overlaps(Rectangle target) => Raylib.CheckCollisionRecs(Bounds, target);
     public int ScorePoint => pointDrop;
     public float MeleeDamage => meleeDamage;
 
@@ -77,7 +77,19 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         fireCooldown = FireInterval;
     }
 
-    public void ReceiveDamage(float damage) => CurrentHp = Math.Max(0, CurrentHp - damage);
+    public void ReceiveDamage(float damage, Player player)
+    {
+        CurrentHp = Math.Max(0, CurrentHp - damage);
+        if (Math.Max(0, CurrentHp - damage) <= 0)
+        {
+            Kill(player);
+            // SaveProgress();
+            // score += enemy.ScorePoint;
+            // popup.Show(enemy.Center, enemy.ScorePoint);
+            var coin =  new CoinDrop(Center, pointDrop);
+            Game.AddCoin(coin);
+        }
+    }
 
     public void ClearProjectiles() => projectiles.Clear();
 

@@ -19,7 +19,7 @@ class Game
     readonly Player player = new();
     readonly ScorePopup popup = new();
     readonly List<Enemy> enemies = [];
-    readonly List<CoinDrop> coins = [];
+    readonly static List<CoinDrop> coins = [];
     readonly UltStrike ultStrike = new();
     readonly SlowTimePower slowTime = new();
     Power[] Powers => [slowTime];
@@ -50,6 +50,11 @@ class Game
     bool showDebugHelp; // Shift+F1 toggles the debug key list overlay
 
     public Game() => BuildMenus();
+
+    public static void AddCoin(CoinDrop coin)
+    {
+        coins.Add(coin);
+    }
 
     public void Update(float dt)
     {
@@ -345,14 +350,14 @@ class Game
         foreach (var power in Powers) power.Update(dt);
         float worldDt = dt * TimeScale; // everything that is not the player ticks on the (possibly slowed) world clock
 
-        player.Update(dt, enemies.Where(e => e.IsAlive).Select(e => e.Bounds).ToList());
+        player.Update(dt, enemies.Where(e => e.IsAlive).Select(e => e.Bounds).ToList(), enemies);
         ultStrike.Update(dt);
         popup.Update(worldDt);
         SpawnEnemies();
 
         var enemy = player.IsUsingUltimate
             ? enemies.Find(e => e.IsSelectedForUlt)
-            : enemies.Find(e => e.Overlaps(player));
+            : enemies.Find(e => e.Overlaps(player.Bounds));
 
         if (enemy != null && enemy.IsAlive && player.SwingLanded)
         {
@@ -362,16 +367,7 @@ class Game
                 ultStrike.Strike(new Vector2(enemy.Center.X, enemy.Bounds.Y + enemy.Bounds.Height));
                 Shake();
             }
-            if (Math.Max(0, enemy.CurrentHp - damage) <= 0)
-            {
-                enemy.Kill(player);
-                SaveProgress();
-                // score += enemy.ScorePoint;
-                // popup.Show(enemy.Center, enemy.ScorePoint);
-                var coin = new CoinDrop(enemy.Center, enemy.ScorePoint);
-                coins.Add(coin);
-            }
-            enemy.ReceiveDamage(damage);
+            enemy.ReceiveDamage(damage, player);
         }
 
         foreach (var en in enemies)
