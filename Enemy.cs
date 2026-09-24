@@ -103,8 +103,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         if (CurrentHp <= 0 && state != EnemyState.Dying)
         {
             Kill(player);
-            var coin = new CoinDrop(Center, pointDrop);
-            Game.AddCoin(coin);
+            Game.DropLoot(Center, pointDrop);
         }
     }
 

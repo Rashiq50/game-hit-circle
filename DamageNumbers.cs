@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-enum DamageStyle { EnemyHit, CriticalHit, PlayerHit, Heal }
+enum DamageStyle { EnemyHit, CriticalHit, PlayerHit, Heal, Power }
 
 class FloatingNumber
 {
@@ -45,6 +45,7 @@ class FloatingNumber
         DamageStyle.CriticalHit => Color.Orange,
         DamageStyle.PlayerHit => Color.Red,
         DamageStyle.Heal => Color.Lime,
+        DamageStyle.Power => Color.Yellow,
         _ => Color.White,
     };
 
@@ -90,7 +91,7 @@ static class FloatingNumbers
         float sizeScale = style == DamageStyle.CriticalHit
             ? 1.6f
             : 1f + 0.5f * Math.Clamp(amount / ReferenceDamage, 0f, 1f);
-        string text = style == DamageStyle.Heal ? $"+{amount:0.##}" : $"{amount:0.##}";
+        string text = style is DamageStyle.Heal or DamageStyle.Power ? $"+{amount:0.##}" : $"{amount:0.##}";
         numbers.Add(new FloatingNumber(text, at + new Vector2(jitter, 0), style, sizeScale, jitter / SpreadX * DriftSpeed));
         if (numbers.Count > MaxOnScreen) numbers.RemoveRange(0, numbers.Count - MaxOnScreen);
     }

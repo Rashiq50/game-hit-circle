@@ -166,7 +166,9 @@ class Player
         }
     }
     public void ReceivePower(float amout) => PlayerUlti = !IsUltimate ? Math.Min(100, PlayerUlti + amout) : PlayerUlti;
-    public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(100, PlayerUlti + amout);
+    public void ReceiveHealth(float amout) => PlayerCurrentHp = Math.Min(PlayerHealth, PlayerCurrentHp + amout);
+    public bool IsFullHealth => PlayerCurrentHp >= PlayerHealth;
+    public bool IsFullPower => PlayerUlti >= 100;
 
     public void Update(float dt, IReadOnlyList<Rectangle> obstacles, IReadOnlyList<Enemy> enemies)
     {

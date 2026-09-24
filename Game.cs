@@ -19,7 +19,8 @@ class Game
     readonly Player player = new();
     readonly ScorePopup popup = new();
     readonly List<Enemy> enemies = [];
-    readonly static List<CoinDrop> coins = [];
+    readonly static List<Pickup> pickups = [];
+    static LootChance[] loot = []; // the current stage's table; static because enemies drop loot as they die
     readonly UltStrike ultStrike = new();
     readonly SlowTimePower slowTime = new();
     Power[] Powers => [slowTime];
@@ -51,9 +52,12 @@ class Game
 
     public Game() => BuildMenus();
 
-    public static void AddCoin(CoinDrop coin)
+    /// <summary>The coin every kill leaves, plus whatever the current stage's loot table rolls.</summary>
+    public static void DropLoot(Vector2 at, int points)
     {
-        coins.Add(coin);
+        pickups.Add(new Pickup(Drops.Coin(points), at));
+        foreach (var entry in loot)
+            if (Random.Shared.NextSingle() < entry.Chance) pickups.Add(new Pickup(entry.Drop, at));
     }
 
     public void Update(float dt)
@@ -105,9 +109,9 @@ class Game
                 enemy.Draw();
             }
             ultStrike.Draw();
-            foreach (var coin in coins)
+            foreach (var pickup in pickups)
             {
-                coin.Draw();
+                pickup.Draw();
             }
             popup.Draw();
             FloatingNumbers.Draw(); // on top of the bodies, so a number is never hidden behind a sprite
@@ -230,6 +234,7 @@ class Game
     {
         enemies.Clear();
         FloatingNumbers.Clear();
+        loot = CurrentStage.Loot;
         spawned = 0;
         int total = CurrentStage.TotalEnemies;
         ShowBanner($"Stage {stage}", $"{total} enem{(total == 1 ? "y" : "ies")} incoming");
@@ -402,23 +407,45 @@ class Game
         }
         enemies.RemoveAll(p => p.IsDead);
 
-        // coin drop parts
-        foreach (var coin in coins)
+        foreach (var pickup in pickups)
         {
-            coin.Update(worldDt);
-            if (coin.Collectable && coin.Overlaps(player)) coin.StartPickUp();
-            if (coin.PickedUp) // the coin has finished shrinking away: award it
-            {
-                score += coin.ScorePoint;
-                popup.Show(coin.Center, coin.ScorePoint);
-                Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
-                Raylib.PlaySound(Assets.ScoreSound);
-            }
+            pickup.Update(worldDt);
+            if (pickup.Collectable && pickup.Overlaps(player) && Wants(pickup)) pickup.StartPickUp();
+            if (pickup.PickedUp) Collect(pickup); // it has finished shrinking away: award it
         }
-        coins.RemoveAll(p => p.PickedUp);
+        pickups.RemoveAll(p => p.PickedUp);
 
         if (StageCleared && !BannerShowing)
             ShowBanner($"Stage {stage} complete!", then: AdvanceStage);
+    }
+
+    /// <summary>Health and power stay on the floor while the player is already full, so they can come back for them.</summary>
+    bool Wants(Pickup pickup) => pickup.Kind switch
+    {
+        DropKind.Health => !player.IsFullHealth,
+        DropKind.Power => !player.IsFullPower,
+        _ => true,
+    };
+
+    void Collect(Pickup pickup)
+    {
+        switch (pickup.Kind)
+        {
+            case DropKind.Coin:
+                score += (int)pickup.Amount;
+                popup.Show(pickup.Center, (int)pickup.Amount);
+                break;
+            case DropKind.Health:
+                player.ReceiveHealth(pickup.Amount);
+                FloatingNumbers.Show(pickup.Center, pickup.Amount, DamageStyle.Heal);
+                break;
+            case DropKind.Power:
+                player.ReceivePower(pickup.Amount);
+                FloatingNumbers.Show(pickup.Center, pickup.Amount, DamageStyle.Power);
+                break;
+        }
+        Raylib.SetSoundVolume(Assets.ScoreSound, 0.05f);
+        Raylib.PlaySound(Assets.ScoreSound);
     }
 
     /// <summary>The world is frozen; only the hover highlight animates until the player clicks an enemy.</summary>

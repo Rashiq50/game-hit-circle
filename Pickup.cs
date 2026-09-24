@@ -1,10 +1,10 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>A coin an enemy leaves behind. It hops out on drop, bobs and spins while waiting, and shrinks away on pickup.</summary>
-class CoinDrop
+/// <summary>Something an enemy leaves behind (see <see cref="DropDef"/>). It hops out on drop, bobs while waiting, and shrinks away on pickup.</summary>
+class Pickup
 {
-    const float Size = 30f; // drawn size of the coin
+    const float Size = 30f; // drawn size of the pickup
     const float DropDuration = 0.55f; // time from spawn until the coin has settled
     const float DropHeight = 40f; // peak of the hop above the rest position
     const float ScatterDistance = 28f; // how far the coin skids from where the enemy died
@@ -12,9 +12,10 @@ class CoinDrop
     const float PickUpRise = 14f; // how far the coin floats up while it shrinks away
     const float BobHeight = 3f;
     const float BobSpeed = 4f;
-    const float SpinSpeed = 3.5f;
+    const float SpinSpeed = 3.5f; // coins only; the other kinds keep their shape readable
+    const float PulseSpeed = 5f; // halo pulse of the power pickup
 
-    readonly int scorePoint;
+    readonly DropDef def;
     readonly Vector2 halfSize = new(15f, 15f);
     readonly Vector2 restPosition; // where the coin lands and waits
     readonly Vector2 scatter; // ground displacement from the spawn point over the drop
@@ -25,9 +26,9 @@ class CoinDrop
     bool isPickedup;
     bool isPickingUp;
 
-    public CoinDrop(Vector2 center, int point)
+    public Pickup(DropDef def, Vector2 center)
     {
-        scorePoint = point;
+        this.def = def;
         this.center = center;
         float angle = Random.Shared.NextSingle() * MathF.Tau;
         scatter = new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * ScatterDistance * (0.5f + Random.Shared.NextSingle() * 0.5f);
@@ -37,7 +38,8 @@ class CoinDrop
     public Vector2 Center => center;
     public bool PickedUp => isPickedup;
     public bool PickingdUp => isPickingUp;
-    public int ScorePoint => scorePoint;
+    public DropKind Kind => def.Kind;
+    public float Amount => def.Amount;
     /// <summary>The coin can be collected only once it has landed and is not already being consumed.</summary>
     public bool Collectable => !isPickingUp && !isPickedup && age >= DropDuration;
 
@@ -97,8 +99,23 @@ class CoinDrop
 
         float w = Size * scale * Math.Max(widthScale, 0.12f);
         float h = Size * scale;
+        if (def.Kind != DropKind.Coin) w = h; // only coins spin
         var slot = new Rectangle(center.X - w / 2, center.Y - lift - h / 2, w, h);
-        HudIcons.DrawCoin(slot, Raylib.Fade(Color.Gold, alpha), w / h);
+        switch (def.Kind)
+        {
+            case DropKind.Coin:
+                HudIcons.DrawCoin(slot, Raylib.Fade(Color.Gold, alpha), w / h);
+                break;
+            case DropKind.Health:
+                HudIcons.DrawHeart(slot, Raylib.Fade(Color.Red, alpha));
+                break;
+            case DropKind.Power:
+                // Rare, so it gets a pulsing halo to be spotted from across the room.
+                float pulse = 0.5f + 0.5f * MathF.Sin(age * PulseSpeed);
+                Raylib.DrawCircleV(new Vector2(center.X, center.Y - lift), h * (0.7f + 0.15f * pulse), Raylib.Fade(Color.Yellow, (0.15f + 0.2f * pulse) * alpha));
+                HudIcons.DrawEnergy(slot, Raylib.Fade(Color.Yellow, alpha));
+                break;
+        }
     }
 
     /// <summary>Height over the drop: one big hop, then a smaller bounce before settling.</summary>
