@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
+class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, float fireRange = Enemy.DefaultFireRange, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false enemies never fire at the player.</summary>
@@ -16,6 +16,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float DeathDuration = 0.4f;
     const float FireInterval = 2f; // seconds between shots while alive
     const float SightReactionDelay = 0.5f; // minimum wait before the first shot after the player comes into view
+    /// <summary>Centre-to-centre shooting distance when a type doesn't set its own; about half the camera's view width, so shooters are (nearly) on screen.</summary>
+    public const float DefaultFireRange = 450f;
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
     public Vector2 Center;
@@ -69,7 +71,6 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         if (!player.IsUsingUltimate) player.ReceivePower(powerDrop);
     }
 
-    /// <param name="others">Enemys already on the field, so this one doesn't land on a spawn point one of them is standing on.</param>
     public void Respawn(Player player, IEnumerable<Enemy> others)
     {
         Center = World.RandomEnemySpawn(others.Where(d => d != this && d.IsAlive).Select(d => d.Bounds).Prepend(player.Bounds));
@@ -94,9 +95,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void ClearProjectiles() => projectiles.Clear();
 
-    bool CanSee(Player player) => CollisionMap.HasLineOfSight(Center, player.Center);
+    bool CanSee(Player player) =>
+        Vector2.DistanceSquared(Center, player.Center) <= fireRange * fireRange
+        && CollisionMap.HasLineOfSight(Center, player.Center);
 
-    /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the enemy is frozen.</summary>
     public void UpdateHover(bool hovered, float dt)
     {
         float step = dt / HoverEaseTime;

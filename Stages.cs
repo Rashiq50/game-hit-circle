@@ -7,20 +7,21 @@ record EnemyDef(
     float MeleeDamage,
     EnemyAttackType AttackType = EnemyAttackType.Ranged,
     float ProjectileSpeed = 280f,
+    float FireRange = Enemy.DefaultFireRange,
     EnemyLook Look = EnemyLook.Sprite)
 {
-    public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, Look);
+    public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, FireRange, Look);
 }
 
 static class Enemies
 {
     public static readonly EnemyDef Grunt = new(Health: 60, PointDrop: 10, PowerDrop: 25, RangedDamage: 12, MeleeDamage: 0);
-    public static readonly EnemyDef Imp = new(Health: 30, PointDrop: 5, PowerDrop: 15, RangedDamage: 8, MeleeDamage: 0, ProjectileSpeed: 320f, Look: EnemyLook.Imp);
+    public static readonly EnemyDef Imp = new(Health: 30, PointDrop: 5, PowerDrop: 15, RangedDamage: 8, MeleeDamage: 0, ProjectileSpeed: 320f, FireRange: 300f, Look: EnemyLook.Imp);
     public static readonly EnemyDef Brute = new(Health: 90, PointDrop: 15, PowerDrop: 30, RangedDamage: 0, MeleeDamage: 20, AttackType: EnemyAttackType.Melee, Look: EnemyLook.Brute);
-    public static readonly EnemyDef Tank = new(Health: 180, PointDrop: 30, PowerDrop: 40, RangedDamage: 15, MeleeDamage: 0, ProjectileSpeed: 220f, Look: EnemyLook.Tank);
-    public static readonly EnemyDef Sniper = new(Health: 50, PointDrop: 20, PowerDrop: 25, RangedDamage: 25, MeleeDamage: 0, ProjectileSpeed: 420f, Look: EnemyLook.Sniper);
-    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackType.Both, Look: EnemyLook.Warlord);
-    public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 300f, Look: EnemyLook.Wisp);
+    public static readonly EnemyDef Tank = new(Health: 180, PointDrop: 30, PowerDrop: 40, RangedDamage: 0, MeleeDamage: 10, AttackType: EnemyAttackType.Melee, Look: EnemyLook.Tank);
+    public static readonly EnemyDef Sniper = new(Health: 50, PointDrop: 20, PowerDrop: 25, RangedDamage: 25, MeleeDamage: 0, ProjectileSpeed: 420f, FireRange: 800f, Look: EnemyLook.Sniper);
+    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackType.Both, FireRange: 500f, Look: EnemyLook.Warlord);
+    public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 300f, FireRange: 250f, Look: EnemyLook.Wisp);
 }
 
 record StageDef(int MaxAtOnce, EnemyDef[] Enemies)
@@ -36,7 +37,7 @@ static class Stages
 
     static readonly StageDef[] All =
     [
-        new(MaxAtOnce: 10, Roster((Enemies.Grunt, 3), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 8), (Enemies.Wisp, 2))),
+        new(MaxAtOnce: 30, Roster((Enemies.Grunt, 10), (Enemies.Brute, 15), (Enemies.Sniper, 5), (Enemies.Tank, 10), (Enemies.Wisp, 12))),
         new(MaxAtOnce: 2, Roster((Enemies.Grunt, 3))),
         new(MaxAtOnce: 2, Roster((Enemies.Imp, 2), (Enemies.Grunt, 2))),
         new(MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Brute, 1))),
