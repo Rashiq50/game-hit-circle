@@ -8,19 +8,20 @@ record EnemyDef(
     EnemyAttackType AttackType = EnemyAttackType.Ranged,
     float ProjectileSpeed = 280f,
     float FireRange = Enemy.DefaultFireRange,
+    float MoveSpeed = 0f, // 0 = holds its position; melee types need this to close the distance
     EnemyLook Look = EnemyLook.Sprite)
 {
-    public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, FireRange, Look);
+    public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, FireRange, MoveSpeed, Look);
 }
 
 static class Enemies
 {
     public static readonly EnemyDef Grunt = new(Health: 60, PointDrop: 10, PowerDrop: 25, RangedDamage: 12, MeleeDamage: 0);
     public static readonly EnemyDef Imp = new(Health: 30, PointDrop: 5, PowerDrop: 15, RangedDamage: 8, MeleeDamage: 0, ProjectileSpeed: 320f, FireRange: 300f, Look: EnemyLook.Imp);
-    public static readonly EnemyDef Brute = new(Health: 90, PointDrop: 15, PowerDrop: 30, RangedDamage: 0, MeleeDamage: 20, AttackType: EnemyAttackType.Melee, Look: EnemyLook.Brute);
+    public static readonly EnemyDef Brute = new(Health: 90, PointDrop: 15, PowerDrop: 30, RangedDamage: 0, MeleeDamage: 20, AttackType: EnemyAttackType.Melee, MoveSpeed: 140f, Look: EnemyLook.Brute);
     public static readonly EnemyDef Tank = new(Health: 180, PointDrop: 30, PowerDrop: 40, RangedDamage: 0, MeleeDamage: 10, AttackType: EnemyAttackType.Melee, Look: EnemyLook.Tank);
     public static readonly EnemyDef Sniper = new(Health: 50, PointDrop: 20, PowerDrop: 25, RangedDamage: 25, MeleeDamage: 0, ProjectileSpeed: 420f, FireRange: 800f, Look: EnemyLook.Sniper);
-    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackType.Both, FireRange: 500f, Look: EnemyLook.Warlord);
+    public static readonly EnemyDef Warlord = new(Health: 250, PointDrop: 50, PowerDrop: 60, RangedDamage: 20, MeleeDamage: 30, AttackType: EnemyAttackType.Both, FireRange: 500f, MoveSpeed: 100f, Look: EnemyLook.Warlord);
     public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 300f, FireRange: 250f, Look: EnemyLook.Wisp);
 }
 

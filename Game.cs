@@ -376,7 +376,7 @@ class Game
         foreach (var en in enemies)
         {
             en.UpdateHover(false, dt);
-            en.Update(worldDt, player, holdFire: cinematic);
+            en.Update(worldDt, player, enemies, holdFire: cinematic);
             if (!cinematic)
             {
                 if (en.ConsumeProjectileHit(player))
@@ -387,6 +387,16 @@ class Game
                 {
                     score += 1;
                     popup.Show(player.Center, 2);
+                }
+
+                if (en.BlockMelee(player))
+                {
+                    score += 1;
+                    popup.Show(player.Center, 2);
+                }
+                else if (en.ConsumeMeleeHit(player))
+                {
+                    Shake();
                 }
             }
         }

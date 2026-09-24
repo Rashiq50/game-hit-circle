@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, float fireRange = Enemy.DefaultFireRange, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
+class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamage, float health, EnemyAttackType attackType = EnemyAttackType.Ranged, float projectileSpeed = 280f, float fireRange = Enemy.DefaultFireRange, float moveSpeed = 0f, EnemyLook look = EnemyLook.Sprite, RangedAttackType rangedType = RangedAttackType.Targeting)
 {
     // Debug values
     /// <summary>Global aggro switch (F3 in-game): when false enemies never fire at the player.</summary>
@@ -18,6 +18,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float SightReactionDelay = 0.5f; // minimum wait before the first shot after the player comes into view
     /// <summary>Centre-to-centre shooting distance when a type doesn't set its own; about half the camera's view width, so shooters are (nearly) on screen.</summary>
     public const float DefaultFireRange = 450f;
+    const float ChaseRange = 600f; // how far a melee enemy notices the player; line of sight is still required
+    const float MeleeReach = 20f; // how far past its hit box a melee swing lands
+    const float MeleeWindup = 0.45f; // telegraph before the swing lands, long enough to step away or parry
+    const float MeleeInterval = 1.2f; // seconds between swings
+    const float ArriveDistance = 4f; // close enough to the last-seen spot to give up the chase
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
     public Vector2 Center;
@@ -36,6 +41,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     bool TakingDamageFromTrails = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
     readonly List<EnemyProjectile> projectiles = [];
+    float meleeCooldown;
+    float windup = -1; // < 0 when not swinging, otherwise seconds into the telegraph
+    bool strikeLanding; // the swing lands this frame; Game resolves it against the player's parry and body
+    Vector2? chaseGoal; // last place the player was seen; kept after losing sight so the enemy checks where they went
 
     // Attributes
     public float CurrentHp = health - 0;
@@ -43,12 +52,15 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public bool IsAlive => state == EnemyState.Idle;
     public bool IsDead => state == EnemyState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
+    Rectangle MeleeBounds => new(Center.X - halfSize.X - MeleeReach, Center.Y - halfSize.Y - MeleeReach,
+        (halfSize.X + MeleeReach) * 2, (halfSize.Y + MeleeReach) * 2);
+    bool HasRanged => attackType is EnemyAttackType.Ranged or EnemyAttackType.Both;
+    bool HasMelee => attackType is EnemyAttackType.Melee or EnemyAttackType.Both;
 
     Rectangle BoundsAt(Vector2 center) =>
         new(center.X - halfSize.X, center.Y - halfSize.Y, halfSize.X * 2, halfSize.Y * 2);
 
     public bool ContainsPoint(Vector2 p) => Raylib.CheckCollisionPointRec(p, Bounds);
-    /// <summary>Mouse-over test for ultimate targeting; more forgiving than the hit box since the sprite is much larger.</summary>
     public bool IsUnderCursor(Vector2 p) => Raylib.CheckCollisionPointCircle(p, Center, TargetRadius);
     public bool Overlaps(Rectangle target) => Raylib.CheckCollisionRecs(Bounds, target);
     public int ScorePoint => pointDrop;
@@ -77,11 +89,14 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         state = EnemyState.Idle;
         animElapsed = 0;
         fireCooldown = FireInterval;
+        meleeCooldown = 0;
+        windup = -1;
+        strikeLanding = false;
+        chaseGoal = null;
     }
 
     public void ReceiveDamage(float damage, Player player)
     {
-        // Above the body, not on it, so the number never sits under the sprite or the health bar.
         FloatingNumbers.Show(new Vector2(Center.X, Center.Y - visualTop * 0.5f), damage,
             player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit);
         CurrentHp = Math.Max(0, CurrentHp - damage);
@@ -95,8 +110,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void ClearProjectiles() => projectiles.Clear();
 
-    bool CanSee(Player player) =>
-        Vector2.DistanceSquared(Center, player.Center) <= fireRange * fireRange
+    bool CanSee(Player player, float range) =>
+        Vector2.DistanceSquared(Center, player.Center) <= range * range
         && CollisionMap.HasLineOfSight(Center, player.Center);
 
     public void UpdateHover(bool hovered, float dt)
@@ -105,16 +120,18 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         hoverLevel = hovered ? Math.Min(1f, hoverLevel + step) : Math.Max(0f, hoverLevel - step);
     }
 
-    /// <param name="holdFire">Freezes shooting and any projectiles in flight (animation still plays), e.g. during the player's ultimate.</param>
-    public void Update(float dt, Player player, bool holdFire = false)
+    public void Update(float dt, Player player, IReadOnlyList<Enemy> others, bool holdFire = false)
     {
         animElapsed += dt;
+        strikeLanding = false;
         if (holdFire) return;
 
-        if (IsAlive && AggroEnabled && (attackType.Equals(EnemyAttackType.Both) || attackType.Equals(EnemyAttackType.Ranged)))
+        if (IsAlive && AggroEnabled && HasMelee) UpdateMelee(dt, player, others);
+
+        if (IsAlive && AggroEnabled && HasRanged)
         {
             fireCooldown -= dt;
-            if (!CanSee(player))
+            if (!CanSee(player, fireRange))
             {
                 fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
             }
@@ -141,7 +158,71 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         projectiles.RemoveAll(p => !p.Active);
     }
 
-    /// <summary>True if any projectile hit the player this frame; the projectile is spent so it can only hit once.</summary>
+    void UpdateMelee(float dt, Player player, IReadOnlyList<Enemy> others)
+    {
+        meleeCooldown -= dt;
+        if (windup >= 0)
+        {
+            windup += dt;
+            if (windup >= MeleeWindup)
+            {
+                windup = -1;
+                strikeLanding = true;
+                meleeCooldown = MeleeInterval;
+            }
+            return;
+        }
+
+        bool seen = CanSee(player, ChaseRange);
+        if (seen) chaseGoal = player.Center;
+
+        if (Raylib.CheckCollisionRecs(MeleeBounds, player.Bounds))
+        {
+            if (seen && meleeCooldown <= 0) windup = 0;
+            return;
+        }
+        if (chaseGoal is Vector2 goal && !MoveToward(goal, dt, player, others)) chaseGoal = null;
+    }
+
+    bool MoveToward(Vector2 goal, float dt, Player player, IReadOnlyList<Enemy> others)
+    {
+        Vector2 d = goal - Center;
+        float dist = d.Length();
+        if (dist <= ArriveDistance) return false;
+        Vector2 step = d / dist * Math.Min(moveSpeed * dt, dist);
+        Vector2 before = Center;
+        TryMove(new Vector2(step.X, 0), player, others);
+        TryMove(new Vector2(0, step.Y), player, others);
+        return Center != before;
+    }
+
+    void TryMove(Vector2 delta, Player player, IReadOnlyList<Enemy> others)
+    {
+        if (delta == Vector2.Zero) return;
+        var next = BoundsAt(Center + delta);
+        if (CollisionMap.Blocks(next) || Raylib.CheckCollisionRecs(next, player.Bounds)) return;
+        foreach (var o in others)
+            if (o != this && o.IsAlive && o.Overlaps(next) && !o.Overlaps(Bounds)) return; // let already-stacked enemies separate
+        Center += delta;
+    }
+
+    public bool BlockMelee(Player player)
+    {
+        if (!strikeLanding || !player.IsParrying || !Raylib.CheckCollisionRecs(MeleeBounds, player.ParryBounds)) return false;
+        strikeLanding = false;
+        Raylib.PlaySound(Assets.SwordBlockSound);
+        return true;
+    }
+
+    public bool ConsumeMeleeHit(Player player)
+    {
+        if (!strikeLanding) return false;
+        strikeLanding = false;
+        if (!Raylib.CheckCollisionRecs(MeleeBounds, player.Bounds)) return false;
+        player.ReceiveDamage(meleeDamage);
+        return true;
+    }
+
     public bool ConsumeProjectileHit(Player player)
     {
         var hit = projectiles.Find(p => p.Overlaps(player.Bounds));
@@ -165,12 +246,12 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         float hover = hoverLevel * hoverLevel * (3f - 2f * hoverLevel); // smoothstep
         if (hover > 0)
         {
-            // Ring under the sprite so the pick target reads even before the scale-up finishes.
             float ring = TargetRadius + 6f * hover;
             Raylib.DrawRing(Center, ring - 3f, ring, 0, 360, 48, Raylib.Fade(Color.Yellow, 0.8f * hover));
         }
         float scale = 1f + HoverScale * hover;
         DrawShadow(scale);
+        if (windup >= 0 && IsAlive) DrawWindup();
         if (look == EnemyLook.Sprite)
         {
             var strip = state == EnemyState.Dying ? Assets.EnemyDeath : Assets.EnemyIdle;
@@ -181,7 +262,6 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         }
         else
         {
-            // No death strip for the primitive looks: they shrink and fade out over the same window instead.
             float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
             EnemyIcons.Draw(look, Center, IconRadius * scale * (1f - 0.5f * death), animElapsed, 1f - death);
         }
@@ -189,7 +269,14 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         foreach (var p in projectiles) p.Draw();
     }
 
-    /// <summary>A soft ground shadow under the feet so the body separates from the background; fades out with the death animation.</summary>
+    void DrawWindup()
+    {
+        float t = Math.Clamp(windup / MeleeWindup, 0f, 1f);
+        float reach = Math.Max(halfSize.X, halfSize.Y) + MeleeReach;
+        Raylib.DrawCircleV(Center, reach * t, Raylib.Fade(Color.Red, 0.3f));
+        Raylib.DrawRing(Center, reach - 2f, reach, 0, 360, 48, Raylib.Fade(Color.Red, 0.4f + 0.5f * t));
+    }
+
     void DrawShadow(float scale)
     {
         float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
