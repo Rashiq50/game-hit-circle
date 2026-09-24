@@ -15,6 +15,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float IdleFps = 12f;
     const float DeathDuration = 0.4f;
     const float FireInterval = 2f; // seconds between shots while alive
+    const float SightReactionDelay = 0.5f; // minimum wait before the first shot after the player comes into view
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
     public Vector2 Center;
@@ -93,6 +94,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public void ClearProjectiles() => projectiles.Clear();
 
+    bool CanSee(Player player) => CollisionMap.HasLineOfSight(Center, player.Center);
+
     /// <summary>Eases the hover highlight toward <paramref name="hovered"/>; safe to call while the rest of the enemy is frozen.</summary>
     public void UpdateHover(bool hovered, float dt)
     {
@@ -109,6 +112,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         if (IsAlive && AggroEnabled && (attackType.Equals(EnemyAttackType.Both) || attackType.Equals(EnemyAttackType.Ranged)))
         {
             fireCooldown -= dt;
+            if (!CanSee(player))
+            {
+                fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
+            }
             List<Vector2> targets = [];
             if (rangedType.Equals(RangedAttackType.Targeting))
             {
