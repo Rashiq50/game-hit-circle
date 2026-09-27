@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="56" height="32" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="2">
+ <imagelayer id="1" name="bg">
+  <image source="forest_glade.png" width="1792" height="1024"/>
+ </imagelayer>
+ <objectgroup id="2" name="Walls"/>
+ <objectgroup id="3" name="SpawnLayers">
+  <object id="1" name="Player Spawn" x="896" y="960">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

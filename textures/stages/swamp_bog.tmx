@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="80" height="48" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="2">
+ <imagelayer id="1" name="bg">
+  <image source="swamp_bog.png" width="2560" height="1536"/>
+ </imagelayer>
+ <objectgroup id="2" name="Walls"/>
+ <objectgroup id="3" name="SpawnLayers">
+  <object id="1" name="Player Spawn" x="1296" y="1472">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

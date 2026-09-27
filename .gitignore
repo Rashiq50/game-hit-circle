@@ -484,3 +484,6 @@ $RECYCLE.BIN/
 # Shipping builds
 publish/
 *.zip
+
+# Stage generator previews (tools/stages/make_stages.py)
+tools/stages/out/
