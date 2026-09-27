@@ -232,6 +232,13 @@ class Game
     /// <summary>Wipes the field and restarts the current stage's roster from its first enemy.</summary>
     void BeginStage()
     {
+        // A stage on a new map starts the player at its spawn on a clean floor; on the same map they carry on where they stand.
+        if (StageMap.Load(CurrentStage.Map))
+        {
+            pickups.Clear();
+            player.PlaceAtSpawn();
+            World.SnapTo(player.Center);
+        }
         enemies.Clear();
         FloatingNumbers.Clear();
         loot = CurrentStage.Loot;
@@ -531,15 +538,15 @@ class Game
                 break;
 
             case GameState.Playing:
-                bg = Assets.Background;
+                bg = StageMap.Background;
                 break;
 
             case GameState.Paused:
-                bg = Assets.Background;
+                bg = StageMap.Background;
                 break;
 
             case GameState.GameOver:
-                bg = Assets.Background;
+                bg = StageMap.Background;
                 break;
         }
         if (IsTargeting) GrayscaleEffect.Begin(); // wash the floor out so the coloured targets stand out

@@ -91,9 +91,12 @@ class Player
         ? Strip.OneShotFrame(animElapsed, AttackDuration)
         : Strip.LoopFrame(animElapsed, AnimFps);
 
+    /// <summary>Puts the player on the loaded map's spawn point, e.g. when a stage switches to a new map.</summary>
+    public void PlaceAtSpawn() => position = CollisionMap.PlayerSpawn - HalfSize;
+
     public void Reset()
     {
-        position = CollisionMap.PlayerSpawn - HalfSize;
+        PlaceAtSpawn();
         state = PlayerState.Idle;
         PlayerCurrentHp = PlayerHealth;
         animElapsed = 0;
@@ -102,7 +105,7 @@ class Player
     }
     public void Resume(float health, float ulti)
     {
-        position = CollisionMap.PlayerSpawn - HalfSize;
+        PlaceAtSpawn();
         state = PlayerState.Idle;
         PlayerCurrentHp = health;
         PlayerUlti = ulti;

@@ -37,6 +37,6 @@ class EnemyProjectile(Vector2 from, Vector2 toward, float damage, float speed)
 
         bool offScreen = position.X < -Radius || position.X > World.Width + Radius
                       || position.Y < -Radius || position.Y > World.Height + Radius;
-        if (offScreen || CollisionMap.Blocks(Bounds)) Active = false;
+        if (offScreen || CollisionMap.BlocksShots(Bounds)) Active = false;
     }
 }

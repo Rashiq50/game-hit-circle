@@ -16,7 +16,7 @@ CX, CY = 58, 33   # arena centre, in tiles
 
 
 def build():
-    st = Stage("volcanic_caldera", 116, 70, seed=66, open_codes=(ASH, BRIDGE, OBSID))
+    st = Stage("volcanic_caldera", 116, 70, seed=66, open_codes=(ASH, BRIDGE, OBSID), pits={LAVA: "Lava"})
 
     st.area(ASH, 5, 5, 111, 66)
     st.blob(ASH, 58, 35, 57, 34)
@@ -56,6 +56,7 @@ def build():
     st.scatter("boulder", 10, {ASH}, sizes=((1, 1), (2, 2), (3, 2)), margin=2, keep_clear=clear)
     st.scatter("vent", 6, {ASH}, sizes=((2, 2),), margin=2, keep_clear=clear)
     st.seal_pockets()
+    st.pick_enemy_spawns(30)
 
     render(st)
     return st

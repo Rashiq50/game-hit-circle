@@ -12,7 +12,7 @@ EDGE = (18, 34, 22)
 
 
 def build():
-    st = Stage("forest_glade", 56, 32, seed=11, open_codes=(GRASS, DIRT, BRIDGE))
+    st = Stage("forest_glade", 56, 32, seed=11, open_codes=(GRASS, DIRT, BRIDGE), pits={WATER: "Water"})
 
     # -- clearing: a few overlapping blobs, open to the south edge for the entry trail
     st.blob(GRASS, 28, 16, 23, 12)
@@ -40,6 +40,7 @@ def build():
     st.scatter("boulder", 4, {GRASS}, sizes=((1, 1), (2, 1)), margin=2, keep_clear=clear)
     st.scatter("bush", 7, {GRASS}, margin=2, keep_clear=clear)
     st.seal_pockets()
+    st.pick_enemy_spawns(10)
 
     render(st)
     return st

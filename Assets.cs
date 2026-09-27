@@ -10,7 +10,7 @@ static class Assets
     const int UltStrikeFrameWidth = 256;
     const int UltStrikeFrameHeight = 512;
 
-    public static Texture2D Background, Fireball, WelcomBackground, MainMenuBackground;
+    public static Texture2D Fireball, WelcomBackground, MainMenuBackground; // the stage floor lives in StageMap
     public static SpriteStrip EnemyIdle, EnemyDeath, UltStrike, FireTrail, IceTrail, MagicTrail;
     public static Sound SwordSound, ScoreSound, UltSound, SwordBlockSound;
 
@@ -21,7 +21,6 @@ static class Assets
 
     public static void Load()
     {
-        Background = Raylib.LoadTexture("textures/stages/castle_floor.png");
         WelcomBackground = Raylib.LoadTexture("textures/welcome.png");
         MainMenuBackground = Raylib.LoadTexture("textures/mainmenu.png");
         Fireball = Raylib.LoadTexture("textures/fireball.png");
@@ -43,7 +42,6 @@ static class Assets
 
     public static void Unload()
     {
-        Raylib.UnloadTexture(Background);
         Raylib.UnloadTexture(WelcomBackground);
         Raylib.UnloadTexture(MainMenuBackground);
         Raylib.UnloadTexture(Fireball);

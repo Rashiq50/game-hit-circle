@@ -13,7 +13,7 @@ WOOD, WOOD_DARK = (120, 92, 62), (70, 50, 32)
 
 
 def build():
-    st = Stage("swamp_bog", 80, 48, seed=33, open_codes=(MUD, BOARD))
+    st = Stage("swamp_bog", 80, 48, seed=33, open_codes=(MUD, BOARD), pits={WATER: "Water"})
 
     st.area(WATER, 3, 3, 77, 45)
     st.blob(WATER, 40, 24, 40, 24)
@@ -51,6 +51,7 @@ def build():
     st.scatter("tree", 8, {MUD}, sizes=((2, 2), (3, 3)), margin=2, keep_clear=clear)
     st.scatter("stump", 10, {MUD}, margin=2, keep_clear=clear)
     st.seal_pockets()
+    st.pick_enemy_spawns(18)
 
     render(st)
     return st

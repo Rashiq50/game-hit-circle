@@ -4,17 +4,22 @@ using Raylib_cs;
 static class World
 {
     public const int Tile = 32;
-    public const int Width = 125 * Tile;
-    public const int Height = 75 * Tile;
     public const int ViewWidth = 28 * Tile;
     public const int ViewHeight = 16 * Tile;
-    const int EnemySpawnWidth = 62 * Tile;
-    const int EnemySpawnHeight = 38 * Tile;
     const float FollowRate = 6f; // how quickly the camera closes on the player, per second; higher is tighter
     const int SpawnMargin = 50;
     const int SpawnClearance = 60;
 
-    public static readonly Vector2 Center = new(Width / 2f, Height / 2f);
+    /// <summary>Size of the current stage's map in world units; set by <see cref="CollisionMap.Load"/> from the .tmx.</summary>
+    public static int Width { get; private set; } = 125 * Tile;
+    public static int Height { get; private set; } = 75 * Tile;
+    public static Vector2 Center => new(Width / 2f, Height / 2f);
+
+    public static void Resize(int width, int height)
+    {
+        Width = width;
+        Height = height;
+    }
     public static Camera2D Camera = new() { Target = Center, Zoom = 1f };
     static Vector2 followPoint = Center; // where the follow camera is looking right now; eases toward the player
 
@@ -73,8 +78,8 @@ static class World
         Vector2 p;
         do
         {
-            p = new(Random.Shared.Next(SpawnMargin, EnemySpawnWidth - SpawnMargin),
-                    Random.Shared.Next(SpawnMargin, EnemySpawnHeight - SpawnMargin));
+            p = new(Random.Shared.Next(SpawnMargin, Width - SpawnMargin),
+                    Random.Shared.Next(SpawnMargin, Height - SpawnMargin));
         } while (CollisionMap.Blocks(ClearanceAt(p)));
         return p;
     }

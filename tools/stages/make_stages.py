@@ -2,10 +2,11 @@
 
     python tools/stages/make_stages.py                 # every stage
     python tools/stages/make_stages.py forest_glade    # just the named ones
+    python tools/stages/make_stages.py --tmx ...       # also regenerate existing .tmx files (overwrites Tiled edits!)
 
-Each stage module exposes build() -> Stage (see common.py). A starter .tmx is written next to each new PNG only when
-none exists, so collision authored in Tiled is never overwritten. Half-size previews and a contact sheet of every stage
-go to tools/stages/out/.
+Each stage module exposes build() -> Stage (see common.py). The .tmx next to each PNG gets the generated walls, pits and
+spawn points, but only when it doesn't exist yet (or with --tmx), so collision edited in Tiled is never overwritten by
+accident. Half-size previews, collision overlays and a contact sheet of every stage go to tools/stages/out/.
 """
 import importlib
 import os
@@ -47,11 +48,13 @@ def contact_sheet():
     sheet.save(os.path.join(OUT_DIR, "contact_sheet.png"))
 
 
-def main(names):
+def main(args):
+    overwrite = "--tmx" in args
+    names = [a for a in args if not a.startswith("--")]
     for name in names or STAGES:
         mod = importlib.import_module(name)
         stage = mod.build()
-        save_stage(stage, getattr(mod, "WRITES_TMX", True))
+        save_stage(stage, getattr(mod, "WRITES_TMX", True), overwrite)
         if isinstance(stage, Stage):
             stuck = stage.check_reachable()
             if stuck:

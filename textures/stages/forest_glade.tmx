@@ -1,11 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="56" height="32" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="2">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="56" height="32" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="81">
  <imagelayer id="1" name="bg">
   <image source="forest_glade.png" width="1792" height="1024"/>
  </imagelayer>
- <objectgroup id="2" name="Walls"/>
- <objectgroup id="3" name="SpawnLayers">
-  <object id="1" name="Player Spawn" x="896" y="960">
+ <objectgroup id="2" name="Walls">
+  <object id="1" name="Wall" x="0" y="0" width="1792" height="128"/>
+  <object id="2" name="Wall" x="0" y="128" width="704" height="32"/>
+  <object id="3" name="Wall" x="1088" y="128" width="320" height="32"/>
+  <object id="4" name="Wall" x="1536" y="128" width="256" height="32"/>
+  <object id="5" name="Wall" x="0" y="160" width="384" height="32"/>
+  <object id="6" name="Wall" x="1248" y="160" width="96" height="32"/>
+  <object id="7" name="Wall" x="1600" y="160" width="192" height="32"/>
+  <object id="8" name="Wall" x="0" y="192" width="288" height="32"/>
+  <object id="9" name="Wall" x="1632" y="192" width="160" height="32"/>
+  <object id="10" name="Wall" x="0" y="224" width="256" height="32"/>
+  <object id="11" name="Wall" x="1664" y="224" width="128" height="224"/>
+  <object id="12" name="Wall" x="0" y="256" width="224" height="32"/>
+  <object id="13" name="Wall" x="0" y="288" width="192" height="64"/>
+  <object id="14" name="Wall" x="0" y="352" width="160" height="672"/>
+  <object id="15" name="Wall" x="1632" y="352" width="32" height="64"/>
+  <object id="16" name="Wall" x="1696" y="448" width="96" height="576"/>
+  <object id="17" name="Wall" x="160" y="576" width="32" height="448"/>
+  <object id="18" name="Wall" x="192" y="640" width="32" height="384"/>
+  <object id="19" name="Wall" x="1664" y="640" width="32" height="384"/>
+  <object id="20" name="Wall" x="224" y="672" width="32" height="352"/>
+  <object id="21" name="Wall" x="1600" y="672" width="64" height="352"/>
+  <object id="22" name="Wall" x="256" y="704" width="32" height="320"/>
+  <object id="23" name="Wall" x="1568" y="736" width="32" height="288"/>
+  <object id="24" name="Wall" x="288" y="768" width="96" height="256"/>
+  <object id="25" name="Wall" x="1536" y="768" width="32" height="256"/>
+  <object id="26" name="Wall" x="384" y="800" width="64" height="224"/>
+  <object id="27" name="Wall" x="1440" y="800" width="96" height="224"/>
+  <object id="28" name="Wall" x="448" y="832" width="96" height="192"/>
+  <object id="29" name="Wall" x="1248" y="832" width="192" height="192"/>
+  <object id="30" name="Wall" x="544" y="864" width="160" height="160"/>
+  <object id="31" name="Wall" x="1088" y="864" width="160" height="160"/>
+  <object id="32" name="Wall" x="704" y="896" width="96" height="128"/>
+  <object id="33" name="Wall" x="992" y="896" width="96" height="128"/>
+  <object id="34" name="tree" x="512" y="224" width="96" height="96"/>
+  <object id="35" name="tree" x="1120" y="672" width="96" height="96"/>
+  <object id="36" name="boulder" x="640" y="640" width="64" height="64"/>
+  <object id="37" name="boulder" x="1440" y="288" width="64" height="32"/>
+  <object id="38" name="tree" x="1280" y="608" width="96" height="96"/>
+  <object id="39" name="tree" x="1056" y="224" width="64" height="64"/>
+  <object id="40" name="tree" x="352" y="288" width="64" height="64"/>
+  <object id="41" name="tree" x="896" y="320" width="64" height="64"/>
+  <object id="42" name="boulder" x="832" y="224" width="32" height="32"/>
+  <object id="43" name="boulder" x="256" y="480" width="32" height="32"/>
+  <object id="44" name="boulder" x="704" y="288" width="32" height="32"/>
+  <object id="45" name="boulder" x="544" y="384" width="64" height="32"/>
+  <object id="46" name="bush" x="1120" y="352" width="32" height="32"/>
+  <object id="47" name="bush" x="928" y="640" width="32" height="32"/>
+  <object id="48" name="bush" x="1152" y="544" width="32" height="32"/>
+  <object id="49" name="bush" x="1056" y="576" width="32" height="32"/>
+  <object id="50" name="bush" x="256" y="352" width="32" height="32"/>
+  <object id="51" name="bush" x="992" y="448" width="32" height="32"/>
+  <object id="52" name="bush" x="1216" y="384" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="3" name="Pits">
+  <object id="53" name="Water" x="1216" y="160" width="32" height="32"/>
+  <object id="54" name="Water" x="1248" y="192" width="96" height="32"/>
+  <object id="55" name="Water" x="1280" y="224" width="64" height="64"/>
+  <object id="56" name="Water" x="1344" y="256" width="32" height="128"/>
+  <object id="57" name="Water" x="1312" y="288" width="32" height="64"/>
+  <object id="58" name="Water" x="1376" y="320" width="32" height="128"/>
+  <object id="59" name="Water" x="1408" y="384" width="32" height="64"/>
+  <object id="60" name="Water" x="416" y="512" width="128" height="192"/>
+  <object id="61" name="Water" x="384" y="544" width="32" height="128"/>
+  <object id="62" name="Water" x="544" y="544" width="32" height="128"/>
+  <object id="63" name="Water" x="1440" y="544" width="96" height="32"/>
+  <object id="64" name="Water" x="352" y="576" width="32" height="64"/>
+  <object id="65" name="Water" x="576" y="576" width="32" height="64"/>
+  <object id="66" name="Water" x="1472" y="576" width="64" height="64"/>
+  <object id="67" name="Water" x="1536" y="608" width="32" height="160"/>
+  <object id="68" name="Water" x="1504" y="640" width="32" height="32"/>
+  <object id="69" name="Water" x="1568" y="672" width="32" height="64"/>
+ </objectgroup>
+ <objectgroup id="4" name="SpawnLayers">
+  <object id="70" name="Player Spawn" x="896" y="960">
+   <point/>
+  </object>
+  <object id="71" name="EnemySpawn" x="1552" y="208">
+   <point/>
+  </object>
+  <object id="72" name="EnemySpawn" x="336" y="240">
+   <point/>
+  </object>
+  <object id="73" name="EnemySpawn" x="944" y="176">
+   <point/>
+  </object>
+  <object id="74" name="EnemySpawn" x="1424" y="752">
+   <point/>
+  </object>
+  <object id="75" name="EnemySpawn" x="432" y="752">
+   <point/>
+  </object>
+  <object id="76" name="EnemySpawn" x="816" y="560">
+   <point/>
+  </object>
+  <object id="77" name="EnemySpawn" x="1168" y="464">
+   <point/>
+  </object>
+  <object id="78" name="EnemySpawn" x="1648" y="528">
+   <point/>
+  </object>
+  <object id="79" name="EnemySpawn" x="208" y="528">
+   <point/>
+  </object>
+  <object id="80" name="EnemySpawn" x="656" y="272">
    <point/>
   </object>
  </objectgroup>

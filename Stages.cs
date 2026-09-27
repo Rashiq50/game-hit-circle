@@ -25,7 +25,19 @@ static class Enemies
     public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 200f, FireRange: 250f, Look: EnemyLook.Wisp);
 }
 
-record StageDef(int MaxAtOnce, EnemyDef[] Enemies, LootChance[] Loot)
+/// <summary>The maps in textures/stages/, one .png + .tmx pair each, smallest first.</summary>
+static class Maps
+{
+    public const string ForestGlade = "forest_glade";
+    public const string DesertRuins = "desert_ruins";
+    public const string SwampBog = "swamp_bog";
+    public const string FrozenCavern = "frozen_cavern";
+    public const string Graveyard = "graveyard";
+    public const string VolcanicCaldera = "volcanic_caldera";
+    public const string CastleFloor = "castle_floor";
+}
+
+record StageDef(string Map, int MaxAtOnce, EnemyDef[] Enemies, LootChance[] Loot)
 {
     public int TotalEnemies => Enemies.Length;
 }
@@ -40,25 +52,25 @@ static class Stages
 
     static readonly StageDef[] All =
     [
-        new(MaxAtOnce: 30, Roster((Enemies.Grunt, 10), (Enemies.Brute, 15), (Enemies.Sniper, 5), (Enemies.Tank, 10), (Enemies.Wisp, 12)),
+        new(Maps.ForestGlade, MaxAtOnce: 4, Roster((Enemies.Brute, 5), (Enemies.Tank, 3), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.15f), (Drops.PowerSurge, 0.02f))),
-        new(MaxAtOnce: 2, Roster((Enemies.Grunt, 3)),
+        new(Maps.ForestGlade, MaxAtOnce: 6, Roster((Enemies.Grunt, 3), (Enemies.Tank, 3), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f))),
-        new(MaxAtOnce: 2, Roster((Enemies.Imp, 2), (Enemies.Grunt, 2)),
+        new(Maps.DesertRuins, MaxAtOnce: 8, Roster((Enemies.Imp, 2), (Enemies.Grunt, 2)),
             Loot((Drops.SmallHealth, 0.40f))),
-        new(MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Brute, 1)),
+        new(Maps.DesertRuins, MaxAtOnce: 10, Roster((Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Brute, 1)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
-        new(MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 3), (Enemies.Brute, 2)),
+        new(Maps.SwampBog, MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 3), (Enemies.Brute, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
-        new(MaxAtOnce: 3, Roster((Enemies.Grunt, 4), (Enemies.Brute, 2), (Enemies.Sniper, 2), (Enemies.Wisp, 2)),
+        new(Maps.SwampBog, MaxAtOnce: 13, Roster((Enemies.Grunt, 4), (Enemies.Brute, 2), (Enemies.Sniper, 2), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),
-        new(MaxAtOnce: 4, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Sniper, 2), (Enemies.Tank, 2)),
+        new(Maps.FrozenCavern, MaxAtOnce: 14, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Sniper, 2), (Enemies.Tank, 2)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),
-        new(MaxAtOnce: 4, Roster((Enemies.Grunt, 5), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2), (Enemies.Wisp, 1)),
+        new(Maps.Graveyard, MaxAtOnce: 18, Roster((Enemies.Grunt, 5), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.04f), (Drops.PowerSurge, 0.03f))),
-        new(MaxAtOnce: 4, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2)),
+        new(Maps.VolcanicCaldera, MaxAtOnce: 24, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.05f), (Drops.PowerSurge, 0.03f))),
-        new(MaxAtOnce: 5, Roster((Enemies.Grunt, 6), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2), (Enemies.Warlord, 1)),
+        new(Maps.CastleFloor, MaxAtOnce: 25, Roster((Enemies.Grunt, 6), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2), (Enemies.Warlord, 1)),
             Loot((Drops.SmallHealth, 0.18f), (Drops.BigHealth, 0.06f), (Drops.PowerSurge, 0.03f))),
     ];
 

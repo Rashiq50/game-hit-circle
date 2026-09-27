@@ -14,7 +14,7 @@ EDGE = (46, 26, 16)
 
 
 def build():
-    st = Stage("desert_ruins", 68, 40, seed=22, open_codes=(SAND, PAVE, GRASS))
+    st = Stage("desert_ruins", 68, 40, seed=22, open_codes=(SAND, PAVE, GRASS), pits={WATER: "Water"})
 
     # -- basin, with cliff outcrops biting into it and the entry gap in the south
     st.area(SAND, 5, 5, 63, 35)
@@ -60,6 +60,7 @@ def build():
     st.scatter("cactus", 9, {SAND}, margin=2, keep_clear=clear)
     st.scatter("rock", 6, {SAND}, sizes=((1, 1), (2, 2)), margin=2, keep_clear=clear)
     st.seal_pockets()
+    st.pick_enemy_spawns(14)
 
     render(st)
     return st

@@ -17,7 +17,7 @@ Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
 BlurEffect.Load();
 GrayscaleEffect.Load();
-CollisionMap.Load("textures/stages/castle_floor.tmx");
+StageMap.Load(Stages.Get(1).Map); // each stage switches to its own map in Game.BeginStage
 var game = new Game();
 
 while (!Raylib.WindowShouldClose() && !game.QuitRequested)
@@ -37,6 +37,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 
 BlurEffect.Unload();
 GrayscaleEffect.Unload();
+StageMap.Unload();
 Assets.Unload();
 Raylib.CloseAudioDevice();
 Raylib.CloseWindow();

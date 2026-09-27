@@ -8,6 +8,7 @@ Themed stages are authored on a *tile-resolution terrain image*: one pixel per t
 with NEAREST into a full-size mask, so every ground edge lands on the grid by construction. Obstacles (trees, rocks, walls)
 are separate objects with a tile footprint, drawn over the ground afterwards.
 """
+import math
 import os
 import random
 from collections import deque
@@ -98,11 +99,13 @@ BOUND = 0  # every stage uses code 0 for the impassable surround
 class Stage:
     """A map `tw` x `th` tiles. `ground` holds one ground code per tile; `objects` are solid props with tile footprints."""
 
-    def __init__(self, name, tw, th, seed, open_codes):
+    def __init__(self, name, tw, th, seed, open_codes, pits=None):
         self.name, self.tw, self.th = name, tw, th
         self.W, self.H = tw * TILE * S, th * TILE * S
         self.rng = random.Random(seed)
         self.open_codes = set(open_codes)        # ground the player can walk on (before objects)
+        self.pits = dict(pits or {})             # closed ground that shots fly over (water, lava, chasms): code -> name
+        self.enemy_spawns = []                   # tile coords of EnemySpawn points, see pick_enemy_spawns
         self.ground = Image.new("L", (tw, th), BOUND)
         self.gd = ImageDraw.Draw(self.ground)
         self.objects = []                         # (kind, tx, ty, w, h, kw)
@@ -288,6 +291,57 @@ class Stage:
         covered = {(x + i, y + j) for x, y in seen for i in range(footprint) for j in range(footprint)}
         return [t for t in self.open_tiles() if t not in covered]
 
+    # -- collision and spawns for the .tmx --
+
+    def _merge(self, cells):
+        """Covers a set of tiles with few rects: grow each run right, then down while the rows below match."""
+        cells, rects = set(cells), []
+        for y in range(self.th):
+            for x in range(self.tw):
+                if (x, y) not in cells:
+                    continue
+                w = 1
+                while (x + w, y) in cells:
+                    w += 1
+                h = 1
+                while all((x + i, y + h) in cells for i in range(w)):
+                    h += 1
+                cells.difference_update((x + i, y + j) for i in range(w) for j in range(h))
+                rects.append((x, y, w, h))
+        return rects
+
+    def collision(self):
+        """(walls, pits) as lists of (name, x, y, w, h) in world units. Walls are the merged impassable surround plus one
+        rect per prop, named after its kind so it's recognisable in Tiled; pits are the merged water / lava / chasms."""
+        tiles = [(x, y) for y in range(self.th) for x in range(self.tw)]
+        closed = [t for t in tiles if self.code(*t) not in self.open_codes and self.code(*t) not in self.pits]
+        px = lambda r, name: (name, r[0] * TILE * S, r[1] * TILE * S, r[2] * TILE * S, r[3] * TILE * S)
+        walls = [px(r, "Wall") for r in self._merge(closed)]
+        walls += [(kind, tx * TILE * S, ty * TILE * S, w * TILE * S, h * TILE * S) for kind, tx, ty, w, h, kw in self.objects]
+        pits = []
+        for code, name in self.pits.items():
+            pits += [px(r, name) for r in self._merge(t for t in tiles if self.code(*t) == code)]
+        return walls, pits
+
+    def pick_enemy_spawns(self, count, min_dist=10):
+        """Spreads `count` EnemySpawn points over the map by farthest-point sampling: each new point is the free spot
+        furthest from every point so far and from the player spawn, so they cover every region evenly. A spot needs the
+        3x3 tiles around it open (an enemy is 50px, the spawn check clears 60px) and `min_dist` tiles to the player."""
+        free = lambda x, y: all(self.code(x + i, y + j) in self.open_codes and (x + i, y + j) not in self.blocked
+                                for i in (-1, 0, 1) for j in (-1, 0, 1))
+        sx, sy = self.spawn
+        cands = [(x, y) for y in range(self.th) for x in range(self.tw)
+                 if free(x, y) and math.hypot(x + 0.5 - sx, y + 0.5 - sy) >= min_dist]
+        best = {c: math.hypot(c[0] + 0.5 - sx, c[1] + 0.5 - sy) for c in cands}
+        picked = []
+        for _ in range(min(count, len(cands))):
+            c = max(best, key=best.get)
+            picked.append(c)
+            del best[c]
+            for o in best:
+                best[o] = min(best[o], math.hypot(o[0] - c[0], o[1] - c[1]))
+        self.enemy_spawns = [(x + 0.5, y + 0.5) for x, y in picked]
+
     def seal_pockets(self, code=BOUND, max_tiles=6):
         """Turns tiny unreachable slivers (left by stepped curves) into `code` so no walkable-looking ground is cut off.
         Bigger pockets are left alone so check_reachable still reports them as layout mistakes."""
@@ -300,29 +354,61 @@ class Stage:
 # ---- Output ----------------------------------------------------------------------------------------------------------
 
 
-def write_tmx(path, tw, th, png_name, spawn_px):
-    """A starter Tiled map mirroring castle_floor.tmx: the background as an image layer, an empty Walls layer and a
-    SpawnLayers group holding just the player spawn. CollisionMap.cs reads objects from every object group."""
-    sx, sy = spawn_px
-    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="{tw}" height="{th}" tilewidth="{TILE}" tileheight="{TILE}" infinite="0" nextlayerid="4" nextobjectid="2">
- <imagelayer id="1" name="bg">
-  <image source="{png_name}" width="{tw * TILE * S}" height="{th * TILE * S}"/>
- </imagelayer>
- <objectgroup id="2" name="Walls"/>
- <objectgroup id="3" name="SpawnLayers">
-  <object id="1" name="Player Spawn" x="{sx:g}" y="{sy:g}">
-   <point/>
-  </object>
- </objectgroup>
-</map>
-"""
+def write_tmx(path, stage):
+    """The stage's Tiled map, laid out like castle_floor.tmx: the background as an image layer, then object layers for
+    Walls (block walking, shots and sight), Pits (block walking only; see CollisionMap.cs) and SpawnLayers (the player
+    spawn and the EnemySpawn points)."""
+    walls, pits = stage.collision()
+    ids = iter(range(1, 1 << 30))
+    lines = []
+
+    def group(gid, name, items):
+        lines.append(f' <objectgroup id="{gid}" name="{name}">')
+        for n, x, y, w, h in items:
+            lines.append(f'  <object id="{next(ids)}" name="{n}" x="{x}" y="{y}" width="{w}" height="{h}"/>')
+        lines.append(' </objectgroup>')
+
+    def point(name, tx, ty):
+        lines.append(f'  <object id="{next(ids)}" name="{name}" x="{tx * TILE * S:g}" y="{ty * TILE * S:g}">')
+        lines.append('   <point/>')
+        lines.append('  </object>')
+
+    group(2, "Walls", walls)
+    group(3, "Pits", pits)
+    lines.append(' <objectgroup id="4" name="SpawnLayers">')
+    point("Player Spawn", *stage.spawn)
+    for x, y in stage.enemy_spawns:
+        point("EnemySpawn", x, y)
+    lines.append(' </objectgroup>')
+    head = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="{stage.tw}" '
+        f'height="{stage.th}" tilewidth="{TILE}" tileheight="{TILE}" infinite="0" nextlayerid="5" nextobjectid="{next(ids)}">',
+        ' <imagelayer id="1" name="bg">',
+        f'  <image source="{stage.name}.png" width="{stage.W}" height="{stage.H}"/>',
+        ' </imagelayer>',
+    ]
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(xml)
+        f.write("\n".join(head + lines + ["</map>", ""]))
 
 
-def save_stage(stage, write_tmx_file=True):
-    """Writes textures/stages/<name>.png, a starter .tmx if none exists yet, and a half-size preview."""
+def collision_preview(stage):
+    """The background with every wall (red), pit (blue), enemy spawn (orange) and the player spawn (green) drawn over it,
+    at half size, so the generated .tmx can be checked by eye."""
+    walls, pits = stage.collision()
+    img = stage.img.copy()
+    d = ImageDraw.Draw(img, "RGBA")
+    for items, fill, line in ((walls, (255, 40, 40, 70), (255, 40, 40, 255)), (pits, (60, 140, 255, 70), (60, 160, 255, 255))):
+        for _, x, y, w, h in items:
+            d.rectangle([x, y, x + w - 1, y + h - 1], fill=fill, outline=line, width=3)
+    for (x, y), col in [((x, y), (255, 150, 0, 255)) for x, y in stage.enemy_spawns] + [(stage.spawn, (40, 255, 80, 255))]:
+        d.ellipse([x * TILE - 14, y * TILE - 14, x * TILE + 14, y * TILE + 14], outline=col, width=6)
+    img.resize((stage.W // 2, stage.H // 2), Image.LANCZOS).save(os.path.join(OUT_DIR, stage.name + "_collision.png"))
+
+
+def save_stage(stage, write_tmx_file=True, overwrite_tmx=False):
+    """Writes textures/stages/<name>.png, its .tmx (only if missing, or when `overwrite_tmx`, so collision edited in
+    Tiled is never lost by accident), and half-size previews of the art and the collision."""
     assert stage.img.size == (stage.tw * TILE * S, stage.th * TILE * S)
     png = os.path.join(STAGES_DIR, stage.name + ".png")
     # Leave an identical PNG alone so rebuilding doesn't churn the committed binary.
@@ -331,14 +417,15 @@ def save_stage(stage, write_tmx_file=True):
     else:
         stage.img.save(png, optimize=True)
         msg = f"wrote {png} {stage.img.size}"
+    os.makedirs(OUT_DIR, exist_ok=True)
     if write_tmx_file:
         tmx = os.path.join(STAGES_DIR, stage.name + ".tmx")
-        if os.path.exists(tmx):
-            msg += " (kept existing .tmx)"
+        if os.path.exists(tmx) and not overwrite_tmx:
+            msg += " (kept existing .tmx; pass --tmx to regenerate it)"
         else:
-            write_tmx(tmx, stage.tw, stage.th, stage.name + ".png",
-                      (stage.spawn[0] * TILE * S, stage.spawn[1] * TILE * S))
-            msg += " + starter .tmx"
-    os.makedirs(OUT_DIR, exist_ok=True)
+            write_tmx(tmx, stage)
+            walls, pits = stage.collision()
+            msg += f" + .tmx ({len(walls)} walls, {len(pits)} pits, {len(stage.enemy_spawns)} enemy spawns)"
+        collision_preview(stage)
     stage.img.resize((stage.W // 2, stage.H // 2), Image.LANCZOS).save(os.path.join(OUT_DIR, stage.name + "_preview.png"))
     print(msg)

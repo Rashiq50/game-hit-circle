@@ -12,7 +12,7 @@ CRYSTAL = (120, 220, 245)
 
 
 def build():
-    st = Stage("frozen_cavern", 92, 56, seed=44, open_codes=(FLOOR, ICE, SNOW))
+    st = Stage("frozen_cavern", 92, 56, seed=44, open_codes=(FLOOR, ICE, SNOW), pits={CHASM: "Chasm"})
 
     # chambers
     st.blob(FLOOR, 46, 48, 9, 6); st.area(FLOOR, 43, 52, 50, 56)  # entry, open to the south edge
@@ -59,6 +59,7 @@ def build():
     st.scatter("stalagmite", 12, {FLOOR}, sizes=((2, 2), (2, 2), (1, 1)), margin=2, keep_clear=clear)
     st.scatter("ice_block", 5, {FLOOR, SNOW}, sizes=((1, 1), (2, 1)), margin=2, keep_clear=clear)
     st.seal_pockets()
+    st.pick_enemy_spawns(22)
 
     render(st)
     return st
