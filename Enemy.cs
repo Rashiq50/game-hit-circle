@@ -33,13 +33,16 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float StatusFadeIn = 0.1f;
     const float StatusFadeOut = 0.25f;
     const float ShockJitter = 1.5f; // how far the body twitches while shocked; the hit box stays put
-    // Move and attack speed under a status. Statuses don't stack: the strongest one applies.
-    const float FrozenSpeed = 0.5f;
-    const float PoisonedSpeed = 0.75f;
-    const float ShockedSpeed = 0.75f;
-    /// <summary>Damage each DamageOverTime tick deals when the caller doesn't give its own.</summary>
-    public const float DefaultDotDamage = 5f;
-    const float DotInterval = 1f; // seconds between DamageOverTime ticks; the first lands one interval after it's applied
+    // Move and attack speed a status leaves the enemy with when ApplyStatus isn't given its own (1 = unaffected, 0 = can't
+    // act at all). Statuses don't stack: the slowest one applies.
+    public const float FrozenSpeed = 0.5f;
+    public const float PoisonedSpeed = 0.75f;
+    public const float ShockedSpeed = 0.75f;
+    public const float StunnedSpeed = 0f;
+    // Damage per tick a status deals when ApplyStatus isn't given its own; 0 = no damage over time by default.
+    public const float BurningDot = 5f;
+    public const float PoisonedDot = 5f;
+    const float DotInterval = 1f; // seconds between damage-over-time ticks; the first lands one interval after the status starts
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -63,8 +66,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     readonly float[] statusLevel = new float[StatusEffects.Count];
     float statusClock; // world-time seconds that animate the status looks
     Vector2 shockOffset; // body draw offset while shocked
-    float dotDamage = DefaultDotDamage; // per tick, while DamageOverTime is on
-    float dotTimer; // seconds toward the next DamageOverTime tick
+    // Also by StatusEffect: damage per tick while the status lasts (0 = none), and seconds toward its next tick.
+    // Each status ticks on its own, so a burning, poisoned enemy takes both.
+    readonly float[] statusDot = new float[StatusEffects.Count];
+    readonly float[] statusDotTimer = new float[StatusEffects.Count];
+    readonly float[] statusSpeed = new float[StatusEffects.Count]; // move/attack speed while the status lasts
     bool facingLeft; // the generated art faces right; mirrored while the player is to the left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
@@ -125,33 +131,57 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     /// <summary>Puts the enemy under a status for at least <paramref name="duration"/> seconds; reapplying refreshes it but
     /// never shortens what's left.</summary>
-    public void ApplyStatus(StatusEffect status, float duration)
+    /// <param name="dotDamage">Damage the status deals every <see cref="DotInterval"/> seconds while it lasts; null uses the
+    /// status's default (<see cref="DefaultDot"/>), 0 means none. Reapplying keeps the harder-hitting of the two.</param>
+    /// <param name="speed">Move and attack speed while the status lasts, 1 = unaffected, 0 = can't act (a full freeze or a
+    /// stun); null uses the status's default (<see cref="DefaultSpeed"/>). Reapplying keeps the slower of the two.</param>
+    public void ApplyStatus(StatusEffect status, float duration, float? dotDamage = null, float? speed = null)
     {
         int i = (int)status;
+        float dot = dotDamage ?? DefaultDot(status);
+        float slow = Math.Clamp(speed ?? DefaultSpeed(status), 0f, 1f);
+        if (statusTime[i] > 0)
+        {
+            statusDot[i] = Math.Max(statusDot[i], dot);
+            statusSpeed[i] = Math.Min(statusSpeed[i], slow);
+        }
+        else
+        {
+            statusDot[i] = dot;
+            statusSpeed[i] = slow;
+            statusDotTimer[i] = 0; // a fresh application waits a full interval before its first tick
+        }
         statusTime[i] = Math.Max(statusTime[i], duration);
     }
 
-    /// <summary>DamageOverTime dealing <paramref name="damagePerTick"/> every <see cref="DotInterval"/> seconds. Reapplying while
-    /// it's on keeps the harder-hitting of the two. Plain <see cref="ApplyStatus"/> on DamageOverTime uses the default.</summary>
-    public void ApplyDamageOverTime(float duration, float damagePerTick = DefaultDotDamage)
+    public static float DefaultDot(StatusEffect status) => status switch
     {
-        dotDamage = HasStatus(StatusEffect.DamageOverTime) ? Math.Max(dotDamage, damagePerTick) : damagePerTick;
-        ApplyStatus(StatusEffect.DamageOverTime, duration);
-    }
+        StatusEffect.Burning => BurningDot,
+        StatusEffect.Poisoned => PoisonedDot,
+        _ => 0f,
+    };
+
+    public static float DefaultSpeed(StatusEffect status) => status switch
+    {
+        StatusEffect.Frozen => FrozenSpeed,
+        StatusEffect.Poisoned => PoisonedSpeed,
+        StatusEffect.Shocked => ShockedSpeed,
+        StatusEffect.Stunned => StunnedSpeed,
+        _ => 1f,
+    };
 
     public bool HasStatus(StatusEffect status) => statusTime[(int)status] > 0;
 
-    /// <summary>Multiplier on how fast the enemy moves and attacks (0 while stunned). Scales the clock that movement,
-    /// attack cooldowns and the melee windup run on; projectiles already in flight keep full speed.</summary>
+    /// <summary>Multiplier on how fast the enemy moves and attacks: the slowest of its active statuses, 0 = can't act.
+    /// Scales the clock that movement, attack cooldowns and the melee windup run on; projectiles already in flight keep
+    /// full speed.</summary>
     public float ActionSpeed
     {
         get
         {
-            if (HasStatus(StatusEffect.Stunned)) return 0f;
             float speed = 1f;
-            if (HasStatus(StatusEffect.Frozen)) speed = Math.Min(speed, FrozenSpeed);
-            if (HasStatus(StatusEffect.Poisoned)) speed = Math.Min(speed, PoisonedSpeed);
-            if (HasStatus(StatusEffect.Shocked)) speed = Math.Min(speed, ShockedSpeed);
+            for (int i = 0; i < StatusEffects.Count; i++)
+                if (statusTime[i] > 0) speed = Math.Min(speed, statusSpeed[i]);
             return speed;
         }
     }
@@ -162,24 +192,22 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         Array.Clear(statusTime);
         Array.Clear(statusLevel);
         shockOffset = Vector2.Zero;
-        dotDamage = DefaultDotDamage;
-        dotTimer = 0;
+        Array.Clear(statusDot);
+        Array.Clear(statusDotTimer);
+        Array.Clear(statusSpeed);
     }
 
     void UpdateDamageOverTime(float dt, Player player)
     {
-        if (!HasStatus(StatusEffect.DamageOverTime))
+        for (int i = 0; i < StatusEffects.Count; i++)
         {
-            // Wore off: the next application starts a fresh interval at the default damage unless it sets its own.
-            dotDamage = DefaultDotDamage;
-            dotTimer = 0;
-            return;
-        }
-        dotTimer += dt;
-        while (dotTimer >= DotInterval && IsAlive)
-        {
-            dotTimer -= DotInterval;
-            ReceiveDamage(dotDamage, player, DamageStyle.DamageOverTime);
+            if (statusTime[i] <= 0 || statusDot[i] <= 0) continue;
+            statusDotTimer[i] += dt;
+            while (statusDotTimer[i] >= DotInterval && IsAlive)
+            {
+                statusDotTimer[i] -= DotInterval;
+                ReceiveDamage(statusDot[i], player, DamageStyle.DamageOverTime);
+            }
         }
     }
 
@@ -238,18 +266,19 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         hitFlash = Math.Max(0, hitFlash - dt);
         UpdateStatuses(dt);
         strikeLanding = false;
-        bool stunned = HasStatus(StatusEffect.Stunned);
-        if (stunned) windup = -1; // a stun interrupts a swing in progress
+        float actionSpeed = ActionSpeed;
+        bool locked = actionSpeed <= 0; // stunned or frozen solid
+        if (locked) windup = -1; // interrupts a swing in progress
         // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art.
         float dx = player.Center.X - Center.X;
-        if (IsAlive && !stunned && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
+        if (IsAlive && !locked && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
         if (holdFire) return;
         // After the hold: a tick mid-ultimate could kill the target before the strike lands.
         UpdateDamageOverTime(dt, player);
 
-        // Stunned enemies skip acting outright: a zero clock alone would still let a melee enemy start a swing it never finishes.
-        bool canAct = IsAlive && AggroEnabled && !stunned;
-        float actDt = dt * ActionSpeed;
+        // A locked enemy skips acting outright: a zero clock alone would still let a melee enemy start a swing it never finishes.
+        bool canAct = IsAlive && AggroEnabled && !locked;
+        float actDt = dt * actionSpeed;
         if (canAct && HasMelee) UpdateMelee(actDt, player, others);
 
         if (canAct && HasRanged)

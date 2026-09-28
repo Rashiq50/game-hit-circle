@@ -2,8 +2,7 @@ using System.Numerics;
 using Raylib_cs;
 
 /// <summary>
-/// Shades an enemy body drawn between Begin()/End(): the status looks (burning, frozen, shocked, poisoned, stunned, damage
-/// over time), each
+/// Shades an enemy body drawn between Begin()/End(): the status looks (burning, frozen, shocked, poisoned, stunned), each
 /// blended in by its own strength so several can stack, then the hit flash on top so a hit always reads. Alpha is kept
 /// from the texel, so only the silhouette changes. Works for primitives too, since raylib draws shapes with a 1x1 white
 /// texture and the colour in fragColor. One shader for everything because raylib has a single active shader and each
@@ -47,7 +46,6 @@ static class EnemyBodyEffect
         uniform float shock;
         uniform float poison;
         uniform float stun;
-        uniform float bleed;  // DamageOverTime ("dot" is a GLSL built-in)
         uniform float flash;  // 0 = untouched, 1 = solid flash colour
         uniform vec4 flashColor;
         out vec4 finalColor;
@@ -132,22 +130,13 @@ static class EnemyBodyEffect
                 col += vec3(1.0, 0.85, 0.2) * stun * smoothstep(0.7, 1.0, swirl) * 0.22;
             }
 
-            if (bleed > 0.0)
-            {
-                // Wounded: a throbbing dark-red tint with thin streaks dripping down the body.
-                float throb = 0.5 + 0.5 * sin(time * 5.0);
-                col = mix(col, col * vec3(1.1, 0.35, 0.35), bleed * (0.35 + 0.25 * throb));
-                float drip = noise(vec2(local.x * 7.0, local.y * 1.5 - time * 1.2));
-                col = mix(col, vec3(0.55, 0.02, 0.05), smoothstep(0.72, 0.85, drip) * bleed * 0.8);
-            }
-
             col = mix(col, flashColor.rgb, flash);
             finalColor = vec4(clamp(col, 0.0, 1.0), texel.a);
         }
         """;
 
     // Uniform names in StatusEffect order.
-    static readonly string[] StatusUniforms = ["burn", "freeze", "shock", "poison", "stun", "bleed"];
+    static readonly string[] StatusUniforms = ["burn", "freeze", "shock", "poison", "stun"];
 
     static Shader shader;
     static int centerLoc, radiusLoc, timeLoc, flashLoc, flashColorLoc;
