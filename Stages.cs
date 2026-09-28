@@ -24,7 +24,6 @@ static class Enemies
     public static readonly EnemyDef Wisp = new(Health: 20, PointDrop: 5, PowerDrop: 60, RangedDamage: 5, MeleeDamage: 0, ProjectileSpeed: 200f, FireRange: 250f, Look: EnemyLook.Wisp);
 }
 
-/// <summary>The maps in textures/stages/, one .png + .tmx pair each, smallest first.</summary>
 static class Maps
 {
     public const string ForestGlade = "forest_glade";
