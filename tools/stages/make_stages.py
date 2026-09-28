@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw  # noqa: E402
 from common import OUT_DIR, Stage, save_stage  # noqa: E402
 
 # Run order = stage order: small outdoor maps first, the castle as the finale.
-STAGES = ["forest_glade", "desert_ruins", "swamp_bog", "frozen_cavern", "graveyard", "volcanic_caldera", "castle_floor"]
+STAGES = ["forest_glade", "forest_hollow", "desert_ruins", "desert_pyramid", "swamp_bog", "swamp_mire", "frozen_cavern", "graveyard", "volcanic_caldera", "castle_floor"]
 
 
 def contact_sheet():

@@ -97,18 +97,22 @@ def stump(d, x0, y0, x1, y1, rng):
 
 
 # ---- render --------------------------------------------------------------------------------------------------------
+# The painters are shared with swamp_mire.py so both swamp maps look like the same place.
 
 
-def render(st):
+def paint_canopy(st):
+    """Dark swamp canopy with hanging moss strands over the impassable surround."""
     rng = st.rng
     lay, d = st.layer((18, 32, 22))
     props.canopy(st, d, LEAF, EDGE, 28, 58, 0.85)
-    # hanging moss strands
     for x, y in props.points(st, props.density(st, 0.25)):
         d.line([(s(x), s(y)), (s(x + rng.uniform(-3, 3)), s(y + rng.uniform(10, 22)))], fill=(96, 120, 70), width=3)
     st.paint(lay, st.mask(BOUND))
 
-    # bog water: murky, with lily pads, bubbles and drifting mist
+
+def paint_water(st, code):
+    """Bog water: murky, with lily pads, bubbles and drifting mist."""
+    rng = st.rng
     lay, d = st.layer(WATER_COL)
     for x, y in props.points(st, props.density(st, 0.05)):
         r = rng.uniform(40, 110)
@@ -121,32 +125,39 @@ def render(st):
         if rng.random() < 0.15:
             circle(d, x, y, 3, (236, 180, 210))
     props.specks(st, d, [(92, 132, 122)], 0.15, 2, 3)
-    st.paint(lay, st.mask(WATER))
-    st.outline(st.mask(WATER), (36, 64, 64), 10)
+    st.paint(lay, st.mask(code))
+    st.outline(st.mask(code), (36, 64, 64), 10)
 
-    # islands: mossy mud
+
+def paint_mud(st, code):
+    """Mossy mud with darker puddles, tufts, toadstools and pale flowers."""
+    rng = st.rng
     lay, d = st.layer((104, 122, 72))
     props.tile_grid(st, d, (98, 115, 68))
     for x, y in props.points(st, props.density(st, 0.05)):
         r = rng.uniform(18, 40)
         d.ellipse([s(x - r), s(y - r * 0.6), s(x + r), s(y + r * 0.6)], fill=(92, 96, 62))
     props.tufts(st, d, (128, 148, 84), 0.8)
-    props.specks(st, d, [(200, 90, 70), (230, 220, 150)], 0.05, 3, 4)          # toadstools, pale flowers
-    st.paint(lay, st.mask(MUD))
+    props.specks(st, d, [(200, 90, 70), (230, 220, 150)], 0.05, 3, 4)
+    st.paint(lay, st.mask(code))
 
-    # boardwalks: planks run across the walking direction of each stretch
+
+def paint_boards(st, code):
+    """Boardwalk planks laid across the walking direction of each stretch. Returns the plank tiles."""
     lay, d = st.layer((0, 0, 0))
-    horiz, vert = st.split_by_run(BOARD)
-    boards = horiz + vert
+    horiz, vert = st.split_by_run(code)
     props.planks(st, d, horiz, WOOD, WOOD_DARK, across_x=True)
     props.planks(st, d, vert, WOOD, WOOD_DARK, across_x=False)
-    st.paint(lay, st.mask(BOARD))
+    st.paint(lay, st.mask(code))
+    return horiz + vert
 
-    # reeds on the water just off each island shore
+
+def reeds(st, water, mud):
+    """Reeds and cattails on the water just off every shore."""
+    rng = st.rng
     for y in range(st.th):
         for x in range(st.tw):
-            if st.code(x, y) == WATER and any(st.code(x + dx, y + dy) == MUD for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))) \
-                    and rng.random() < 0.45:
+            if st.code(x, y) == water and any(st.code(x + dx, y + dy) == mud for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))                     and rng.random() < 0.45:
                 bx, by = x * TILE + rng.uniform(8, 24), y * TILE + rng.uniform(18, 28)
                 for k in range(4):
                     tx = bx + (k - 1.5) * 4 + rng.uniform(-2, 2)
@@ -154,6 +165,11 @@ def render(st):
                     d_.line([(s(bx + (k - 1.5) * 2), s(by)), (s(tx), s(by - rng.uniform(14, 22)))], fill=(70, 110, 56), width=3)
                     if k == 1:
                         d_.line([(s(tx), s(by - 20)), (s(tx), s(by - 12))], fill=(110, 70, 40), width=5)   # cattail
+
+
+def treeline_faces(st, open_codes):
+    """The canopy's shadowed underside, with root-flared trunks and hanging moss, above open ground and water."""
+    rng = st.rng
 
     def face(d, x0, x1, y0, y1):
         rect(d, x0, y1 - TILE, x1, y1, (16, 28, 20))
@@ -164,16 +180,28 @@ def render(st):
             x += rng.uniform(30, 56)
         for x in range(int(x0) + 6, int(x1) - 4, 14):
             vline(d, x, y1 - TILE, y1 - TILE + rng.uniform(6, 18), (96, 120, 70), 3)
-    st.faces({BOUND}, {MUD, WATER}, 1, face)
+    st.faces({BOUND}, set(open_codes), 1, face)
 
-    st.outline(st.mask(MUD, BOARD))
-    # boardwalk posts where planks meet water
+
+def board_posts(st, boards, water):
+    """Posts where boardwalk planks meet water."""
     for x, y in boards:
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            if st.code(x + dx, y + dy) == WATER and (x + y) % 2 == 0:
+            if st.code(x + dx, y + dy) == water and (x + y) % 2 == 0:
                 px = x * TILE + TILE / 2 + dx * (TILE / 2 - 6)
                 py = y * TILE + TILE / 2 + dy * (TILE / 2 - 6)
                 circle(st.d, px, py, 5, WOOD_DARK, EDGE, 2)
+
+
+def render(st):
+    paint_canopy(st)
+    paint_water(st, WATER)
+    paint_mud(st, MUD)
+    boards = paint_boards(st, BOARD)
+    reeds(st, WATER, MUD)
+    treeline_faces(st, {MUD, WATER})
+    st.outline(st.mask(MUD, BOARD))
+    board_posts(st, boards, WATER)
 
     st.draw_objects({
         "hut": hut,

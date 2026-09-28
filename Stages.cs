@@ -28,8 +28,11 @@ static class Enemies
 static class Maps
 {
     public const string ForestGlade = "forest_glade";
+    public const string ForestHollow = "forest_hollow";
     public const string DesertRuins = "desert_ruins";
+    public const string DesertPyramid = "desert_pyramid";
     public const string SwampBog = "swamp_bog";
+    public const string SwampMire = "swamp_mire";
     public const string FrozenCavern = "frozen_cavern";
     public const string Graveyard = "graveyard";
     public const string VolcanicCaldera = "volcanic_caldera";
@@ -57,15 +60,15 @@ static class Stages
     [
         new(Maps.ForestGlade, MaxAtOnce: 4, Roster((Enemies.Brute, 7), (Enemies.Tank, 2), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.15f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.ForestGlade, MaxAtOnce: 5, Roster((Enemies.Brute, 8), (Enemies.Tank, 4), (Enemies.Imp, 1), (Enemies.Wisp, 1)),
+        new(Maps.ForestHollow, MaxAtOnce: 5, Roster((Enemies.Brute, 8), (Enemies.Tank, 4), (Enemies.Imp, 1), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f))),
         new(Maps.DesertRuins, MaxAtOnce: 8, Roster((Enemies.Brute, 9), (Enemies.Tank, 5), (Enemies.Imp, 2), (Enemies.Grunt, 1), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f))),
-        new(Maps.DesertRuins, MaxAtOnce: 10, Roster((Enemies.Brute, 11), (Enemies.Tank, 5), (Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Wisp, 1)),
+        new(Maps.DesertPyramid, MaxAtOnce: 10, Roster((Enemies.Brute, 11), (Enemies.Tank, 5), (Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
         new(Maps.SwampBog, MaxAtOnce: 8, Roster((Enemies.Brute, 12), (Enemies.Tank, 6), (Enemies.Imp, 3), (Enemies.Grunt, 3), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.SwampBog, MaxAtOnce: 9, Roster((Enemies.Brute, 12), (Enemies.Tank, 6), (Enemies.Imp, 3), (Enemies.Grunt, 4), (Enemies.Sniper, 1), (Enemies.Wisp, 2)),
+        new(Maps.SwampMire, MaxAtOnce: 9, Roster((Enemies.Brute, 12), (Enemies.Tank, 6), (Enemies.Imp, 3), (Enemies.Grunt, 4), (Enemies.Sniper, 1), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),
         new(Maps.FrozenCavern, MaxAtOnce: 14, Roster((Enemies.Brute, 13), (Enemies.Tank, 6), (Enemies.Imp, 4), (Enemies.Grunt, 5), (Enemies.Sniper, 2), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),

@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="86" height="52" tilewidth="32" tileheight="32" infinite="0" nextlayerid="5" nextobjectid="166">
+ <imagelayer id="1" name="bg">
+  <image source="swamp_mire.png" width="2752" height="1664"/>
+ </imagelayer>
+ <objectgroup id="2" name="Walls">
+  <object id="1" name="Wall" x="0" y="0" width="2752" height="64"/>
+  <object id="2" name="Wall" x="0" y="64" width="1120" height="32"/>
+  <object id="3" name="Wall" x="1632" y="64" width="1120" height="32"/>
+  <object id="4" name="Wall" x="0" y="96" width="928" height="32"/>
+  <object id="5" name="Wall" x="1824" y="96" width="928" height="32"/>
+  <object id="6" name="Wall" x="0" y="128" width="320" height="64"/>
+  <object id="7" name="Wall" x="2560" y="128" width="192" height="96"/>
+  <object id="8" name="Wall" x="0" y="192" width="288" height="32"/>
+  <object id="9" name="Wall" x="0" y="224" width="256" height="32"/>
+  <object id="10" name="Wall" x="2592" y="224" width="160" height="32"/>
+  <object id="11" name="Wall" x="0" y="256" width="192" height="32"/>
+  <object id="12" name="Wall" x="2624" y="256" width="128" height="192"/>
+  <object id="13" name="Wall" x="0" y="288" width="128" height="192"/>
+  <object id="14" name="Wall" x="2592" y="448" width="128" height="32"/>
+  <object id="15" name="Wall" x="32" y="480" width="96" height="32"/>
+  <object id="16" name="Wall" x="2656" y="640" width="96" height="1024"/>
+  <object id="17" name="Wall" x="32" y="672" width="64" height="32"/>
+  <object id="18" name="Wall" x="0" y="704" width="64" height="352"/>
+  <object id="19" name="Wall" x="2624" y="768" width="32" height="896"/>
+  <object id="20" name="Wall" x="2592" y="800" width="32" height="192"/>
+  <object id="21" name="Wall" x="64" y="960" width="32" height="96"/>
+  <object id="22" name="Wall" x="96" y="1024" width="32" height="32"/>
+  <object id="23" name="Wall" x="0" y="1280" width="128" height="384"/>
+  <object id="24" name="Wall" x="2432" y="1408" width="32" height="32"/>
+  <object id="25" name="Wall" x="2560" y="1408" width="64" height="256"/>
+  <object id="26" name="Wall" x="2464" y="1440" width="96" height="224"/>
+  <object id="27" name="Wall" x="128" y="1472" width="64" height="192"/>
+  <object id="28" name="Wall" x="192" y="1504" width="32" height="160"/>
+  <object id="29" name="Wall" x="2432" y="1504" width="32" height="160"/>
+  <object id="30" name="Wall" x="224" y="1536" width="864" height="128"/>
+  <object id="31" name="Wall" x="1824" y="1536" width="608" height="128"/>
+  <object id="32" name="Wall" x="1088" y="1568" width="64" height="96"/>
+  <object id="33" name="Wall" x="1632" y="1568" width="192" height="96"/>
+  <object id="34" name="Wall" x="1152" y="1600" width="480" height="64"/>
+  <object id="35" name="wall" x="1216" y="160" width="192" height="32"/>
+  <object id="36" name="wall" x="1536" y="160" width="224" height="32"/>
+  <object id="37" name="wall" x="1216" y="192" width="32" height="128"/>
+  <object id="38" name="wall" x="1728" y="192" width="32" height="96"/>
+  <object id="39" name="idol" x="1440" y="224" width="64" height="64"/>
+  <object id="40" name="pillar" x="1312" y="256" width="32" height="32"/>
+  <object id="41" name="pillar" x="1632" y="256" width="32" height="32"/>
+  <object id="42" name="mangrove" x="1280" y="864" width="160" height="128"/>
+  <object id="43" name="hut" x="2016" y="1056" width="160" height="96"/>
+  <object id="44" name="hut" x="2272" y="1152" width="160" height="96"/>
+  <object id="45" name="barrel" x="1824" y="1088" width="32" height="32"/>
+  <object id="46" name="dead_tree" x="256" y="864" width="64" height="64"/>
+  <object id="47" name="dead_tree" x="2208" y="864" width="64" height="64"/>
+  <object id="48" name="dead_tree" x="992" y="1376" width="64" height="64"/>
+  <object id="49" name="dead_tree" x="448" y="1184" width="64" height="64"/>
+  <object id="50" name="dead_tree" x="512" y="896" width="64" height="64"/>
+  <object id="51" name="dead_tree" x="1216" y="1056" width="64" height="64"/>
+  <object id="52" name="dead_tree" x="1888" y="352" width="64" height="64"/>
+  <object id="53" name="dead_tree" x="672" y="288" width="64" height="64"/>
+  <object id="54" name="dead_tree" x="960" y="288" width="64" height="64"/>
+  <object id="55" name="dead_tree" x="992" y="1088" width="64" height="64"/>
+  <object id="56" name="tree" x="1952" y="832" width="96" height="96"/>
+  <object id="57" name="tree" x="1024" y="768" width="64" height="64"/>
+  <object id="58" name="tree" x="704" y="1408" width="64" height="64"/>
+  <object id="59" name="tree" x="1440" y="1216" width="64" height="64"/>
+  <object id="60" name="tree" x="448" y="224" width="96" height="96"/>
+  <object id="61" name="tree" x="416" y="736" width="64" height="64"/>
+  <object id="62" name="tree" x="576" y="1248" width="64" height="64"/>
+  <object id="63" name="tree" x="1440" y="1088" width="64" height="64"/>
+  <object id="64" name="stump" x="1088" y="352" width="32" height="32"/>
+  <object id="65" name="stump" x="2112" y="256" width="32" height="32"/>
+  <object id="66" name="stump" x="768" y="864" width="32" height="32"/>
+  <object id="67" name="stump" x="736" y="1312" width="32" height="32"/>
+  <object id="68" name="stump" x="928" y="800" width="32" height="32"/>
+  <object id="69" name="stump" x="288" y="736" width="32" height="32"/>
+  <object id="70" name="stump" x="1600" y="1088" width="32" height="32"/>
+  <object id="71" name="stump" x="2208" y="192" width="32" height="32"/>
+  <object id="72" name="glowcap" x="192" y="736" width="32" height="32"/>
+  <object id="73" name="glowcap" x="672" y="192" width="32" height="32"/>
+  <object id="74" name="glowcap" x="960" y="192" width="32" height="32"/>
+  <object id="75" name="glowcap" x="352" y="1216" width="32" height="32"/>
+  <object id="76" name="glowcap" x="1088" y="256" width="32" height="32"/>
+  <object id="77" name="glowcap" x="1088" y="992" width="32" height="32"/>
+  <object id="78" name="glowcap" x="1376" y="704" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup id="3" name="Pits">
+  <object id="79" name="Water" x="416" y="416" width="64" height="224"/>
+  <object id="80" name="Water" x="1376" y="416" width="64" height="224"/>
+  <object id="81" name="Water" x="2400" y="416" width="32" height="192"/>
+  <object id="82" name="Water" x="384" y="448" width="32" height="192"/>
+  <object id="83" name="Water" x="1344" y="448" width="32" height="192"/>
+  <object id="84" name="Water" x="2240" y="448" width="32" height="192"/>
+  <object id="85" name="Water" x="2432" y="448" width="160" height="160"/>
+  <object id="86" name="Water" x="2720" y="448" width="32" height="192"/>
+  <object id="87" name="Water" x="0" y="480" width="32" height="224"/>
+  <object id="88" name="Water" x="224" y="480" width="160" height="160"/>
+  <object id="89" name="Water" x="608" y="480" width="64" height="192"/>
+  <object id="90" name="Water" x="1216" y="480" width="128" height="160"/>
+  <object id="91" name="Water" x="1568" y="480" width="64" height="192"/>
+  <object id="92" name="Water" x="2112" y="480" width="128" height="160"/>
+  <object id="93" name="Water" x="2592" y="480" width="128" height="160"/>
+  <object id="94" name="Water" x="32" y="512" width="192" height="160"/>
+  <object id="95" name="Water" x="672" y="512" width="128" height="160"/>
+  <object id="96" name="Water" x="864" y="512" width="64" height="192"/>
+  <object id="97" name="Water" x="1024" y="512" width="192" height="96"/>
+  <object id="98" name="Water" x="1632" y="512" width="192" height="160"/>
+  <object id="99" name="Water" x="1888" y="512" width="64" height="192"/>
+  <object id="100" name="Water" x="2016" y="512" width="96" height="160"/>
+  <object id="101" name="Water" x="800" y="544" width="64" height="160"/>
+  <object id="102" name="Water" x="928" y="544" width="96" height="160"/>
+  <object id="103" name="Water" x="1824" y="544" width="64" height="160"/>
+  <object id="104" name="Water" x="1952" y="544" width="64" height="160"/>
+  <object id="105" name="Water" x="1120" y="608" width="96" height="64"/>
+  <object id="106" name="Water" x="2560" y="608" width="32" height="32"/>
+  <object id="107" name="Water" x="224" y="640" width="32" height="32"/>
+  <object id="108" name="Water" x="1216" y="640" width="64" height="32"/>
+  <object id="109" name="Water" x="2112" y="640" width="96" height="32"/>
+  <object id="110" name="Water" x="736" y="672" width="64" height="32"/>
+  <object id="111" name="Water" x="1760" y="672" width="64" height="32"/>
+  <object id="112" name="Water" x="2016" y="672" width="64" height="32"/>
+  <object id="113" name="Water" x="896" y="704" width="32" height="32"/>
+  <object id="114" name="Water" x="1920" y="704" width="64" height="32"/>
+  <object id="115" name="Water" x="1728" y="864" width="128" height="128"/>
+  <object id="116" name="Water" x="1696" y="896" width="32" height="64"/>
+  <object id="117" name="Water" x="1856" y="896" width="32" height="64"/>
+  <object id="118" name="Water" x="704" y="960" width="128" height="192"/>
+  <object id="119" name="Water" x="672" y="992" width="32" height="128"/>
+  <object id="120" name="Water" x="832" y="992" width="32" height="128"/>
+  <object id="121" name="Water" x="640" y="1024" width="32" height="64"/>
+  <object id="122" name="Water" x="864" y="1024" width="32" height="64"/>
+  <object id="123" name="Water" x="2080" y="1024" width="256" height="32"/>
+  <object id="124" name="Water" x="1984" y="1056" width="32" height="96"/>
+  <object id="125" name="Water" x="2176" y="1056" width="256" height="96"/>
+  <object id="126" name="Water" x="1952" y="1088" width="32" height="64"/>
+  <object id="127" name="Water" x="2432" y="1088" width="32" height="320"/>
+  <object id="128" name="Water" x="1920" y="1120" width="32" height="32"/>
+  <object id="129" name="Water" x="2464" y="1120" width="32" height="256"/>
+  <object id="130" name="Water" x="2496" y="1152" width="32" height="192"/>
+  <object id="131" name="Water" x="2528" y="1184" width="32" height="128"/>
+  <object id="132" name="Water" x="1152" y="1248" width="128" height="128"/>
+  <object id="133" name="Water" x="1856" y="1248" width="320" height="64"/>
+  <object id="134" name="Water" x="1120" y="1280" width="32" height="64"/>
+  <object id="135" name="Water" x="1280" y="1280" width="32" height="64"/>
+  <object id="136" name="Water" x="1888" y="1312" width="288" height="32"/>
+  <object id="137" name="Water" x="352" y="1344" width="128" height="128"/>
+  <object id="138" name="Water" x="1920" y="1344" width="512" height="32"/>
+  <object id="139" name="Water" x="320" y="1376" width="32" height="64"/>
+  <object id="140" name="Water" x="480" y="1376" width="32" height="64"/>
+  <object id="141" name="Water" x="1472" y="1376" width="128" height="128"/>
+  <object id="142" name="Water" x="1952" y="1376" width="480" height="32"/>
+  <object id="143" name="Water" x="1440" y="1408" width="32" height="64"/>
+  <object id="144" name="Water" x="1600" y="1408" width="32" height="64"/>
+  <object id="145" name="Water" x="1984" y="1408" width="448" height="32"/>
+  <object id="146" name="Water" x="2080" y="1440" width="256" height="32"/>
+ </objectgroup>
+ <objectgroup id="4" name="SpawnLayers">
+  <object id="147" name="Player Spawn" x="80" y="1168">
+   <point/>
+  </object>
+  <object id="148" name="EnemySpawn" x="2576" y="304">
+   <point/>
+  </object>
+  <object id="149" name="EnemySpawn" x="1584" y="1552">
+   <point/>
+  </object>
+  <object id="150" name="EnemySpawn" x="1136" y="144">
+   <point/>
+  </object>
+  <object id="151" name="EnemySpawn" x="2576" y="1360">
+   <point/>
+  </object>
+  <object id="152" name="EnemySpawn" x="240" y="304">
+   <point/>
+  </object>
+  <object id="153" name="EnemySpawn" x="912" y="976">
+   <point/>
+  </object>
+  <object id="154" name="EnemySpawn" x="1840" y="752">
+   <point/>
+  </object>
+  <object id="155" name="EnemySpawn" x="592" y="1488">
+   <point/>
+  </object>
+  <object id="156" name="EnemySpawn" x="1968" y="176">
+   <point/>
+  </object>
+  <object id="157" name="EnemySpawn" x="2384" y="816">
+   <point/>
+  </object>
+  <object id="158" name="EnemySpawn" x="720" y="464">
+   <point/>
+  </object>
+  <object id="159" name="EnemySpawn" x="1328" y="688">
+   <point/>
+  </object>
+  <object id="160" name="EnemySpawn" x="2064" y="1200">
+   <point/>
+  </object>
+  <object id="161" name="EnemySpawn" x="1104" y="1456">
+   <point/>
+  </object>
+  <object id="162" name="EnemySpawn" x="368" y="784">
+   <point/>
+  </object>
+  <object id="163" name="EnemySpawn" x="1552" y="1104">
+   <point/>
+  </object>
+  <object id="164" name="EnemySpawn" x="1552" y="304">
+   <point/>
+  </object>
+  <object id="165" name="EnemySpawn" x="560" y="1104">
+   <point/>
+  </object>
+ </objectgroup>
+</map>

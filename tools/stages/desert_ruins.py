@@ -115,11 +115,12 @@ def cactus(d, x0, y0, x1, y1, rng):
 
 
 # ---- render --------------------------------------------------------------------------------------------------------
+# The painters are shared with desert_pyramid.py so both desert maps look like the same place.
 
 
-def render(st):
+def paint_cliffs(st):
+    """Sandstone strata and cracks over the whole impassable surround."""
     rng = st.rng
-    # cliffs: layered sandstone strata
     lay, d = st.layer((150, 96, 60))
     y = 0
     while y < st.H:
@@ -131,14 +132,18 @@ def render(st):
     props.cracks(st, d, (96, 58, 36), 0.12, 3)
     st.paint(lay, st.mask(BOUND))
 
-    # sand
+
+def paint_sand(st, *codes):
     lay, d = st.layer((226, 194, 136))
     props.tile_grid(st, d, (219, 187, 130))
     props.ripples(st, d, (206, 172, 116), 0.45, 30, 3)
     props.specks(st, d, [(196, 160, 106), (238, 212, 160)], 0.4, 2, 3)
-    st.paint(lay, st.mask(SAND))
+    st.paint(lay, st.mask(*codes))
 
-    # flagstones: a grid of worn slabs, some cracked or missing
+
+def paint_flagstones(st, *codes):
+    """A grid of worn slabs, some cracked or sand-filled."""
+    rng = st.rng
     lay, d = st.layer((196, 168, 120))
     props.tile_grid(st, d, (176, 148, 104), 2)
     for x, y in props.points(st, props.density(st, 0.06)):
@@ -147,19 +152,25 @@ def render(st):
             rect(d, tx + 3, ty + 3, tx + TILE - 3, ty + TILE - 3, (220, 188, 132))                     # sand-filled gap
         else:
             d.line([(tx + 6, ty + 8), (tx + 16, ty + 18), (tx + 26, ty + 14)], fill=(150, 124, 86), width=2)
-    st.paint(lay, st.mask(PAVE))
+    st.paint(lay, st.mask(*codes))
 
+
+def paint_oasis(st, grass, water):
     lay, d = st.layer((128, 164, 80))
     props.tile_grid(st, d, (120, 156, 74))
     props.tufts(st, d, (150, 188, 96), 1.0)
-    st.paint(lay, st.mask(GRASS))
+    st.paint(lay, st.mask(grass))
 
     lay, d = st.layer((58, 170, 190))
     props.ripples(st, d, (150, 220, 230), 0.6, 20)
-    st.paint(lay, st.mask(WATER))
-    st.outline(st.mask(WATER), (40, 132, 160), 10)
+    st.paint(lay, st.mask(water))
+    st.outline(st.mask(water), (40, 132, 160), 10)
 
-    # cliff faces two tiles deep with vertical striations
+
+def cliff_faces(st):
+    """Cliff faces two tiles deep with vertical striations, above every open tile."""
+    rng = st.rng
+
     def face(d, x0, x1, y0, y1):
         rect(d, x0, y0, x1, y1, (178, 114, 70))
         hline(d, x0, x1, y0 + 3, (204, 146, 94), 5)
@@ -169,6 +180,14 @@ def render(st):
             x += rng.uniform(12, 26)
         hline(d, x0, x1, y1 - 3, (120, 72, 44), 5)
     st.faces({BOUND}, set(st.open_codes), 2, face)
+
+
+def render(st):
+    paint_cliffs(st)
+    paint_sand(st, SAND)
+    paint_flagstones(st, PAVE)
+    paint_oasis(st, GRASS, WATER)
+    cliff_faces(st)
 
     st.outline(st.mask(SAND, PAVE, GRASS))
 
