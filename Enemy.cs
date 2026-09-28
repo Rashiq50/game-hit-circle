@@ -33,6 +33,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float StatusFadeIn = 0.1f;
     const float StatusFadeOut = 0.25f;
     const float ShockJitter = 1.5f; // how far the body twitches while shocked; the hit box stays put
+    // Move and attack speed under a status. Statuses don't stack: the strongest one applies.
+    const float FrozenSpeed = 0.5f;
+    const float PoisonedSpeed = 0.75f;
+    const float ShockedSpeed = 0.75f;
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -124,6 +128,21 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public bool HasStatus(StatusEffect status) => statusTime[(int)status] > 0;
 
+    /// <summary>Multiplier on how fast the enemy moves and attacks (0 while stunned). Scales the clock that movement,
+    /// attack cooldowns and the melee windup run on; projectiles already in flight keep full speed.</summary>
+    public float ActionSpeed
+    {
+        get
+        {
+            if (HasStatus(StatusEffect.Stunned)) return 0f;
+            float speed = 1f;
+            if (HasStatus(StatusEffect.Frozen)) speed = Math.Min(speed, FrozenSpeed);
+            if (HasStatus(StatusEffect.Poisoned)) speed = Math.Min(speed, PoisonedSpeed);
+            if (HasStatus(StatusEffect.Shocked)) speed = Math.Min(speed, ShockedSpeed);
+            return speed;
+        }
+    }
+
     /// <summary>Ends every status at once, look included (no fade-out).</summary>
     public void ClearStatuses()
     {
@@ -186,16 +205,21 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         hitFlash = Math.Max(0, hitFlash - dt);
         UpdateStatuses(dt);
         strikeLanding = false;
+        bool stunned = HasStatus(StatusEffect.Stunned);
+        if (stunned) windup = -1; // a stun interrupts a swing in progress
         // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art.
         float dx = player.Center.X - Center.X;
-        if (IsAlive && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
+        if (IsAlive && !stunned && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
         if (holdFire) return;
 
-        if (IsAlive && AggroEnabled && HasMelee) UpdateMelee(dt, player, others);
+        // Stunned enemies skip acting outright: a zero clock alone would still let a melee enemy start a swing it never finishes.
+        bool canAct = IsAlive && AggroEnabled && !stunned;
+        float actDt = dt * ActionSpeed;
+        if (canAct && HasMelee) UpdateMelee(actDt, player, others);
 
-        if (IsAlive && AggroEnabled && HasRanged)
+        if (canAct && HasRanged)
         {
-            fireCooldown -= dt;
+            fireCooldown -= actDt;
             if (!CanSee(player, fireRange))
             {
                 fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
