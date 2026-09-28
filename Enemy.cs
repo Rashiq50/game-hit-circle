@@ -25,7 +25,9 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float ArriveDistance = 4f; // close enough to the last-seen spot to give up the chase
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
-    const float HitFlashDuration = 0.12f; // how long the body flashes white after taking damage
+    // After a hit the body holds solid white for a few frames, then snaps back; a flash that starts fading at once reads as mush.
+    const float HitFlashHold = 0.07f;
+    const float HitFlashFade = 0.08f;
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -103,7 +105,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         FloatingNumbers.Show(new Vector2(Center.X, Center.Y - visualTop * 0.5f), damage,
             player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit);
         CurrentHp = Math.Max(0, CurrentHp - damage);
-        hitFlash = HitFlashDuration;
+        hitFlash = HitFlashHold + HitFlashFade;
         if (CurrentHp <= 0 && state != EnemyState.Dying)
         {
             Kill(player);
@@ -258,7 +260,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         if (windup >= 0 && IsAlive) DrawWindup();
         // Only the body flashes, and only while it's hit: each shader switch flushes raylib's batch.
         bool flashing = hitFlash > 0;
-        if (flashing) HitFlashEffect.Begin(hitFlash / HitFlashDuration, Color.White);
+        if (flashing)
+        {
+            float fade = Math.Min(1f, hitFlash / HitFlashFade); // 1 through the hold, then falls to 0
+            HitFlashEffect.Begin(fade * fade, Color.White); // squared so the tail drops off fast
+        }
         if (look == EnemyLook.Sprite)
         {
             var strip = state == EnemyState.Dying ? Assets.EnemyDeath : Assets.EnemyIdle;
