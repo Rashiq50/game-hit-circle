@@ -1,288 +1,537 @@
-"""Stage 7 (finale): a whole castle floor (rooms, halls, corridors) in flat fills with dark outlines.
-Layout is in world units (4000x2400 = 125x75 tiles of 32); every edge sits on the 32 grid. Walls are generated around the
-union of every rect, so rooms are just rectangles and a corridor that touches two rooms opens a doorway between them.
-castle_floor.tmx holds hand-made collision, so this generator only ever writes the PNG."""
-from types import SimpleNamespace
-from PIL import Image, ImageDraw, ImageFilter
-from common import S, TILE, LINE, DARK, GOLD, VOID, s, rect, hline, vline, circle, arch, grid, pillar, spaced
+"""Stage 7 (finale): Castle Keep (125x75 tiles). From the south: a grassy approach, a moat crossed by a drawbridge, the
+curtain wall's gatehouse, then a wide bailey (stables, market stalls, well, smithy, training yard) up to the inner wall.
+Its three gates lead into the keep: the pillared throne hall in the middle (the Warlord's arena), barracks over a library
+and armoury to the west, and a chapel over a walled garden to the east. Walls are four tiles thick, with two-tile faces
+of coursed brick hung with banners, torches and, in the chapel, stained glass."""
+import math
+from functools import partial
+from common import Stage, TILE, LINE, GOLD, rect, hline, vline, circle, poly, mix, s
+import props
+from graveyard import pew, altar, lantern
 
-TW, TH = 125, 75
-WORLD_W, WORLD_H = TW * TILE, TH * TILE
-W, H = WORLD_W * S, WORLD_H * S
-WALL = TILE                # wall thickness around every interior rect
+BOUND, STONE, COBBLE, WOOD, MARBLE, GRASS, DIRT, WATER, BRIDGE = range(9)
+OPEN = (STONE, COBBLE, WOOD, MARBLE, GRASS, DIRT, BRIDGE)
 
-WALL_STONE = (50, 53, 70)
-WALL_MORTAR = (40, 42, 56)
+EDGE = (16, 14, 22)
+TOP, TOP_SEAM = (62, 64, 80), (48, 50, 64)          # wall tops seen from above
+BRICK, MORTAR, LIP = (98, 100, 118), (72, 74, 90), (132, 134, 152)
+BANNER, CARPET = (150, 24, 36), (146, 22, 34)
+WOOD_C, WOOD_D = (134, 98, 64), (94, 64, 40)
+LEAF = ((52, 104, 58), (62, 118, 64), (46, 94, 52), (70, 128, 66))
+LEAF_EDGE = (18, 34, 22)
+FIRE = (255, 150, 60)
 
-THEMES = {
-    # wall = north-face band, floor, grid = tile lines, plus a couple of accents each theme uses
-    "stone":       dict(wall=(78, 84, 108), floor=(104, 112, 134), grid=(94, 102, 122), dark=(14, 14, 22)),
-    "barracks":    dict(wall=(63, 72, 204), floor=(112, 148, 190), grid=(100, 134, 176), dark=(12, 12, 24)),
-    "ember":       dict(wall=(78, 26, 30), floor=(98, 72, 64), grid=(88, 64, 56), dark=(30, 10, 8)),
-    "foundry":     dict(wall=(95, 115, 140), floor=(128, 138, 150), grid=(112, 122, 134), dark=(30, 40, 55)),
-    "observatory": dict(wall=(70, 40, 130), floor=(86, 70, 128), grid=(76, 60, 116), dark=(35, 15, 60)),
-    "crypt":       dict(wall=(24, 40, 72), floor=(34, 66, 84), grid=(30, 58, 76), dark=(8, 14, 26)),
-    "throne":      dict(wall=(110, 16, 28), floor=(70, 26, 30), grid=(64, 22, 26), dark=(40, 5, 10)),
-}
-
-
-class Room:
-    def __init__(self, name, x0, y0, x1, y1, theme, band=90):
-        self.name, self.x0, self.y0, self.x1, self.y1, self.theme, self.band = name, x0, y0, x1, y1, theme, band
-
-    @property
-    def w(self): return self.x1 - self.x0
-    @property
-    def h(self): return self.y1 - self.y0
-    @property
-    def cx(self): return (self.x0 + self.x1) / 2
-
-
-# ---- Floor plan --------------------------------------------------------------------------------------------------
-# Three rows: wings top (barracks / throne / observatory), middle (foundry / crypt), a great corridor as the spine,
-# then kitchens / entrance hall / guard room along the bottom. Corridors (band=32 or 0) glue them together.
-# Coordinates are tile counts * 32; bands are 3 tiles in rooms, 2 in the spine, 1 in the side passages.
-ROOMS = [
-    Room("throne", 1408, 160, 2592, 992, "throne", 96),
-    Room("barracks", 320, 160, 1184, 800, "barracks", 96),
-    Room("observatory", 2816, 160, 3680, 800, "observatory", 96),
-    Room("foundry", 320, 960, 1184, 1504, "foundry", 96),
-    Room("crypt", 2816, 960, 3680, 1504, "crypt", 96),
-    Room("spine", 320, 1536, 3680, 1792, "stone", 64),
-    Room("entrance", 1504, 1856, 2496, 2304, "stone", 96),
-    Room("kitchen", 320, 1856, 1184, 2304, "ember", 96),
-    Room("guard", 2816, 1856, 3680, 2304, "barracks", 96),
-    # corridors: horizontal ones get a low band, vertical ones open straight into the room above (no band).
-    # Doorways are 6 tiles wide; the short vertical ones are just the doorway through a shared wall.
-    Room("c_bar_throne", 1184, 448, 1408, 608, "stone", 32),
-    Room("c_obs_throne", 2592, 448, 2816, 608, "stone", 32),
-    Room("c_bar_foundry", 640, 800, 832, 960, "stone", 0),
-    Room("c_obs_crypt", 3136, 800, 3328, 960, "stone", 0),
-    Room("c_throne_spine", 1920, 992, 2112, 1536, "stone", 0),
-    Room("c_foundry_spine", 640, 1504, 832, 1536, "stone", 0),
-    Room("c_crypt_spine", 3136, 1504, 3328, 1536, "stone", 0),
-    Room("c_spine_entrance", 1920, 1792, 2112, 1856, "stone", 0),
-    Room("c_spine_kitchen", 640, 1792, 832, 1856, "stone", 0),
-    Room("c_spine_guard", 3136, 1792, 3328, 1856, "stone", 0),
-]
-GATE = (1920, 2304, 2112, 2400)  # main gate through the south wall below the entrance hall, 6 tiles wide
-for _r in ROOMS + [Room("gate", *GATE, "stone", 0)]:
-    assert all(v % TILE == 0 for v in (_r.x0, _r.y0, _r.x1, _r.y1, _r.band)), f"{_r.name} is off the {TILE} grid"
-
-
-# ---- North-face bands: same decorations as the hallway images, laid out per wall segment --------------------------
-
-
-def band_decor(d, theme, x0, x1, y0, y1, t):
-    h = y1 - y0
-    if theme == "stone":
-        for cx in spaced(x0, x1, 12, 220):
-            rect(d, cx - 4, y0 + h * 0.45, cx + 4, y0 + h * 0.8, DARK)
-            circle(d, cx, y0 + h * 0.4, 8, GOLD, DARK, 2)
-    elif theme == "barracks":
-        for cx in spaced(x0, x1, 55, 170):
-            rect(d, cx - 27, y0 + 20, cx + 28, y0 + h - 25, t["wall"], t["dark"])
-    elif theme == "ember":
-        for i, cx in enumerate(spaced(x0, x1, 70, 150)):
-            if i % 2 == 0:
-                arch(d, cx - 35, y0 + 20, 70, h - 20, (235, 110, 40), t["dark"])
-                arch(d, cx - 21, y0 + 40, 42, h - 40, (255, 170, 70), t["dark"])
-            else:
-                rect(d, cx - 4, y0 + 40, cx + 4, y0 + 70, DARK); circle(d, cx, y0 + 35, 10, GOLD, DARK, 2)
-    elif theme == "foundry":
-        for x in range(int(x0), int(x1) + 1, 200):
-            vline(d, x, y0, y1, t["dark"], 3)
-        for x in range(int(x0) + 25, int(x1), 50):
-            circle(d, x, y0 + 12, 4, (180, 195, 210)); circle(d, x, y1 - 12, 4, (180, 195, 210))
-        for cx in spaced(x0, x1, 140, 300):
-            rect(d, cx - 70, y0 + 25, cx + 70, y1, (70, 85, 105), t["dark"])
-            for y in range(int(y0) + 40, int(y1), 18):
-                hline(d, cx - 62, cx + 62, y, t["dark"], 3)
-            vline(d, cx, y0 + 25, y1, t["dark"], 3)
-    elif theme == "observatory":
-        lens = (240, 230, 255)
-        cs = spaced(x0, x1, 24, 110)
-        mid = len(cs) // 2
-        for i, cx in enumerate(cs):
-            if i == mid:
-                circle(d, cx, y0 + h / 2, 40, (120, 60, 200), t["dark"])
-                circle(d, cx, y0 + h / 2, 25, (40, 20, 70), lens, 3)
-                hline(d, cx - 30, cx + 30, y0 + h / 2, lens, 3); vline(d, cx, y0 + h / 2 - 30, y0 + h / 2 + 30, lens, 3)
-            else:
-                rect(d, cx - 12, y0 + 15, cx + 12, y1 - 10, (120, 60, 200), t["dark"])
-                vline(d, cx, y0 + 15, y1 - 10, lens, 3)
-    elif theme == "crypt":
-        for cx in spaced(x0, x1, 68, 180):
-            circle(d, cx, y0 + h / 2, 32, (40, 90, 120), t["dark"])
-            circle(d, cx, y0 + h / 2, 19, (80, 220, 255), t["dark"], 3)
-            circle(d, cx, y0 + h / 2, 7, (200, 250, 255))
-    elif theme == "throne":
-        hline(d, x0, x1, y0 + 12, GOLD, 5); hline(d, x0, x1, y1 - 12, GOLD, 5)
-        for cx in spaced(x0, x1, 60, 130):
-            d.polygon([(s(cx - 30), s(y0 + 25)), (s(cx + 30), s(y0 + 25)), (s(cx + 30), s(y1 - 35)),
-                       (s(cx), s(y1 - 20)), (s(cx - 30), s(y1 - 35))], fill=(150, 20, 30), outline=t["dark"], width=LINE)
-            hline(d, cx - 18, cx + 18, y0 + 60, GOLD, 4)
-            for i, hh in ((-1, 12), (0, 20), (1, 12)):
-                px = cx + i * 12
-                d.polygon([(s(px), s(y0 + 60 - hh)), (s(px - 5), s(y0 + 60)), (s(px + 5), s(y0 + 60))], fill=GOLD)
-
-
-def draw_band(d, room):
-    if room.band == 0:
-        return
-    t = THEMES[room.theme]
-    y0, y1 = room.y0, room.y0 + room.band
-    # Openings: any rect whose bottom sits on this room's top edge is a doorway, so the band skips it.
-    cuts = sorted((max(o.x0, room.x0), min(o.x1, room.x1)) for o in ROOMS
-                  if o is not room and o.y1 == room.y0 and o.x1 > room.x0 and o.x0 < room.x1)
-    x = room.x0
-    segments = []
-    for c0, c1 in cuts:
-        if c0 > x: segments.append((x, c0))
-        x = c1
-    if x < room.x1: segments.append((x, room.x1))
-    for sx0, sx1 in segments:
-        rect(d, sx0, y0, sx1, y1, t["wall"])
-        band_decor(d, room.theme, sx0, sx1, y0, y1, t)
-        hline(d, sx0, sx1, y1, t["dark"], LINE)
-        # Band ends beside an opening read as the door jambs.
-        if sx0 != room.x0: vline(d, sx0, y0, y1, t["dark"], LINE)
-        if sx1 != room.x1: vline(d, sx1, y0, y1, t["dark"], LINE)
-
-
-# ---- Floors and furniture ----------------------------------------------------------------------------------------
-
-
-def draw_floor(img, d, room):
-    t = THEMES[room.theme]
-    rect(d, room.x0, room.y0, room.x1, room.y1, t["floor"])
-    step = TILE * 3 if room.theme == "foundry" else TILE  # foundry floor is big plates; everything else shows the tile grid
-    grid(d, room.x0, room.y0, room.x1, room.y1, step, t["grid"], 3 if room.theme == "foundry" else 2)
-    if room.theme == "observatory":  # diamond lattice instead of a square grid, drawn on its own layer so it clips to the room
-        layer = Image.new("RGB", (s(room.w), s(room.h)), t["floor"])
-        dl = ImageDraw.Draw(layer)
-        for x in range(-room.h, room.w + room.h, TILE * 2):
-            dl.line([(s(x), 0), (s(x + room.h), s(room.h))], fill=t["grid"], width=2)
-            dl.line([(s(x), s(room.h)), (s(x + room.h), 0)], fill=t["grid"], width=2)
-        img.paste(layer, (s(room.x0), s(room.y0)))
-    if room.theme == "foundry":
-        for x in range(int(room.x0), int(room.x1) + 1, TILE * 3):
-            for y in range(int(room.y0), int(room.y1) + 1, TILE * 3):
-                circle(d, x, y, 5, (180, 195, 210))
-
-
-def draw_furniture(d, room):
-    t = THEMES[room.theme]
-    top = room.y0 + room.band  # first free row under the wall face
-    if room.name == "throne":
-        rect(d, room.cx - 120, top, room.cx + 120, room.y1, (150, 20, 30), GOLD, 4)           # carpet
-        rect(d, room.cx - 200, top, room.cx + 200, top + 90, (90, 12, 20), t["dark"])          # dais
-        rect(d, room.cx - 45, top + 10, room.cx + 45, top + 70, (60, 10, 14), GOLD, 4)          # throne
-        for i, hh in ((-1, 16), (0, 26), (1, 16)):
-            px = room.cx + i * 22
-            d.polygon([(s(px), s(top + 10 - hh)), (s(px - 9), s(top + 10)), (s(px + 9), s(top + 10))], fill=GOLD)
-        for x in (room.x0 + 220, room.x1 - 220):
-            for y in range(int(top) + 200, int(room.y1) - 80, 180):
-                pillar(d, x, y, 34, t)
-        for x in (room.cx - 300, room.cx + 300):
-            circle(d, x, top + 45, 22, (60, 10, 14), t["dark"]); circle(d, x, top + 40, 12, (255, 140, 40))
-    elif room.name == "barracks":
-        for i in range(4):
-            x = room.x0 + 64 + i * 192
-            rect(d, x, top + 40, x + 70, top + 170, (150, 160, 180), t["dark"])       # bed
-            rect(d, x + 8, top + 48, x + 62, top + 80, (200, 205, 215), t["dark"], 2)  # pillow
-            rect(d, x, top + 200, x + 70, top + 250, (80, 60, 40), t["dark"])          # chest
-        rect(d, room.x0 + 120, room.y1 - 170, room.x1 - 120, room.y1 - 90, (80, 60, 40), t["dark"])  # long table
-    elif room.name == "observatory":
-        cx, cy = room.cx, (top + room.y1) / 2
-        lens = (240, 230, 255)
-        circle(d, cx, cy, 150, (100, 50, 170), t["dark"]); circle(d, cx, cy, 110, t["floor"], lens, 3)
-        circle(d, cx, cy, 40, (100, 50, 170), lens, 3)
-        hline(d, cx - 150, cx + 150, cy, lens, 3); vline(d, cx, cy - 150, cy + 150, lens, 3)
-        for x in (room.x0 + 120, room.x1 - 120):
-            rect(d, x - 30, top + 40, x + 30, top + 100, (60, 30, 100), t["dark"])          # lecterns
-    elif room.name == "foundry":
-        for i in range(3):
-            x = room.x0 + 96 + i * 288
-            rect(d, x, top + 40, x + 160, top + 130, (70, 85, 105), t["dark"])       # forge
-            rect(d, x + 30, top + 60, x + 130, top + 110, (255, 120, 60), t["dark"])  # its fire
-        for i in range(4):
-            x = room.x0 + 96 + i * 224
-            rect(d, x, room.y1 - 160, x + 90, room.y1 - 110, (60, 62, 80), t["dark"])  # anvils
-    elif room.name == "crypt":
-        for i in range(4):
-            x = room.x0 + 96 + i * 192
-            for y in (top + 60, room.y1 - 200):
-                d.rounded_rectangle([s(x), s(y), s(x + 90), s(y + 150)], radius=s(14), fill=(40, 90, 120), outline=t["dark"], width=LINE)
-                circle(d, x + 45, y + 75, 12, (200, 250, 255))
-        for (x, y) in ((room.x0 + 60, room.y1 - 90), (room.x1 - 110, top + 30), (room.cx - 25, (top + room.y1) / 2)):
-            rect(d, x, y, x + 50, y + 50, (48, 110, 130), (80, 220, 255), 3)
-    elif room.name == "kitchen":
-        rect(d, room.x0 + 150, top + 100, room.x1 - 150, top + 180, (80, 60, 40), t["dark"])     # table
-        rect(d, room.x0 + 150, room.y1 - 160, room.x1 - 150, room.y1 - 80, (80, 60, 40), t["dark"])
-        for i in range(5):
-            circle(d, room.x0 + 200 + i * 130, top + 140, 18, (200, 120, 60), t["dark"], 2)      # pots
-    elif room.name == "guard":
-        for i in range(6):
-            x = room.x0 + 60 + i * 140
-            rect(d, x, top + 30, x + 90, top + 60, (60, 62, 80), t["dark"])                       # weapon racks
-            for j in range(3):
-                vline(d, x + 20 + j * 25, top + 60, top + 120, (180, 195, 210), 3)
-        for i in range(3):
-            rect(d, room.x1 - 150, room.y1 - 90 - i * 70, room.x1 - 80, room.y1 - 30 - i * 70, (80, 60, 40), t["dark"])  # crates
-    elif room.name == "entrance":
-        rect(d, room.cx - 100, top, room.cx + 100, room.y1, (150, 20, 30), GOLD, 4)   # carpet to the gate
-        for x in (room.x0 + 100, room.x1 - 100):
-            for y in (top + 80, room.y1 - 80):
-                circle(d, x, y, 22, (60, 10, 14), t["dark"]); circle(d, x, y - 5, 12, (255, 140, 40))
-    elif room.name == "spine":
-        for x in range(int(room.x0) + 200, int(room.x1) - 100, 400):
-            pillar(d, x, room.y1 - 60, 26, t)
-
-
-# ---- Compose --------------------------------------------------------------------------------------------------------
+HALL = (44, 6, 81, 36)       # throne hall, tiles [x0, x1) x [y0, y1)
+CHAPEL = (85, 6, 117, 20)
+CURTAIN_FACE_Y = 65          # the outer wall's face looks out over the moat
 
 
 def build():
-    img = Image.new("RGB", (W, H), VOID)
-    d = ImageDraw.Draw(img)
+    st = Stage("castle_floor", 125, 75, seed=77, open_codes=OPEN, pits={WATER: "Moat"})
 
-    # Walls: every rect grown by WALL. Masks give clean outlines around the merged shape without seams at the joins.
-    interior = Image.new("L", (W, H), 0)
-    walls = Image.new("L", (W, H), 0)
-    di, dw = ImageDraw.Draw(interior), ImageDraw.Draw(walls)
-    for r in ROOMS:
-        dw.rectangle([s(r.x0 - WALL), s(r.y0 - WALL), s(r.x1 + WALL), s(r.y1 + WALL)], fill=255)
-        di.rectangle([s(r.x0), s(r.y0), s(r.x1), s(r.y1)], fill=255)
-    dw.rectangle([s(GATE[0] - WALL), s(GATE[1]), s(GATE[2] + WALL), s(GATE[3])], fill=255)
+    # -- outside: the approach road, the moat and the drawbridge, and the gate passage through the curtain wall
+    st.area(GRASS, 0, 69, 125, 75)
+    st.area(DIRT, 59, 69, 65, 75)
+    st.area(WATER, 0, 65, 125, 69)
+    st.area(BRIDGE, 59, 65, 65, 69)
+    st.area(COBBLE, 59, 61, 65, 65)
+    st.spawn = (62, 73)
 
-    stone = Image.new("RGB", (W, H), WALL_STONE)
-    ds = ImageDraw.Draw(stone)
-    for row, y in enumerate(range(0, WORLD_H, TILE)):   # brickwork, one course per tile
-        hline(ds, 0, WORLD_W, y, WALL_MORTAR, 2)
-        for x in range(TILE if row % 2 else 0, WORLD_W, TILE * 2):
-            vline(ds, x, y, y + TILE, WALL_MORTAR, 2)
-    img.paste(stone, (0, 0), walls)
+    # -- bailey: a dirt yard crossed by cobbled roads
+    st.area(DIRT, 8, 40, 117, 61)
+    st.area(COBBLE, 59, 40, 65, 61)
+    st.area(COBBLE, 8, 49, 117, 53)
 
-    for r in ROOMS: draw_floor(img, d, r)
-    for r in ROOMS: draw_band(d, r)
-    for r in ROOMS: draw_furniture(d, r)
+    # -- inner wall gates, then the keep
+    st.area(STONE, 59, 36, 65, 40); st.area(STONE, 20, 36, 26, 40); st.area(STONE, 99, 36, 105, 40)
+    st.area(STONE, *HALL)
+    st.area(WOOD, 8, 6, 40, 20)        # barracks
+    st.area(WOOD, 8, 24, 40, 36)       # library and armoury
+    st.area(MARBLE, *CHAPEL)
+    st.area(GRASS, 85, 24, 117, 36)    # garden
+    for x0, y0, x1, y1 in ((40, 11, 44, 16), (40, 28, 44, 33), (81, 11, 85, 16), (81, 28, 85, 33)):
+        st.area(STONE, x0, y0, x1, y1)  # doors between the hall and the wings
+    st.area(WOOD, 21, 20, 27, 24)       # barracks <-> library
+    st.area(MARBLE, 98, 20, 104, 24)    # chapel <-> garden
 
-    # Outline: the interior mask minus its erosion is a ring just inside the floor edge.
-    edge = Image.eval(interior.filter(ImageFilter.MinFilter(2 * LINE + 1)), lambda v: 255 - v)
-    edge = Image.composite(interior, Image.new("L", (W, H), 0), edge)
-    img.paste(Image.new("RGB", (W, H), DARK), (0, 0), edge)
+    # -- throne hall: throne and braziers on the dais, two rows of pillars, armour stands along the walls
+    st.put("throne", 60, 6, 4, 3)
+    st.put("brazier", 56, 6); st.put("brazier", 67, 6)
+    for y in (13, 18, 23, 28):
+        st.put("pillar", 49, y, 2, 2); st.put("pillar", 74, y, 2, 2)
+    for y in (20, 24):
+        st.put("armour", 44, y); st.put("armour", 80, y)
 
-    # Main gate: an opening in the south wall with a portcullis.
-    gx0, gy0, gx1, gy1 = GATE
-    rect(d, gx0, gy0, gx1, gy1, (30, 20, 20), DARK)
-    for x in range(int(gx0) + 25, int(gx1), 25):
-        vline(d, x, gy0, gy1, (120, 125, 140), 4)
-    for y in range(int(gy0) + 25, int(gy1), 25):
-        hline(d, gx0, gx1, y, (120, 125, 140), 4)
+    # -- barracks: bunks along the north wall with chests, a mess table, the weapon rack by the door
+    for i, x in enumerate(range(10, 36, 4)):
+        st.put("bed", x, 6, 2, 3)
+        if i % 2 == 0:
+            st.put("chest", x, 9)
+    st.put("table", 16, 14, 9, 2)
+    st.put("rack", 8, 19, 3, 1)
+    # -- library and armoury: shelves on the north wall, reading tables, racks down the west wall
+    for x in (8, 13, 30, 35):
+        st.put("shelf", x, 24, 5, 1)
+    st.put("desk", 12, 29, 3, 2); st.put("desk", 28, 29, 3, 2)
+    st.put("rack", 8, 31, 1, 3)
 
-    # Shaped like a Stage so save_stage can write it; the spawn is the gate, matching castle_floor.tmx.
-    return SimpleNamespace(name="castle_floor", tw=TW, th=TH, W=W, H=H, img=img, spawn=(62.5, 70))
+    # -- chapel: altar under the windows, pews either side of the aisle, candelabras
+    st.put("altar", 99, 6, 5, 2)
+    for y in (10, 13, 16):
+        st.put("pew", 89, y, 5, 1); st.put("pew", 107, y, 5, 1)
+    st.put("candelabra", 91, 6); st.put("candelabra", 111, 6)
+    # -- garden: fountain in the middle, hedged beds, two trees
+    st.put("fountain", 99, 28, 5, 5)
+    for x, y in ((88, 26), (108, 26), (88, 33), (108, 33)):
+        st.put("hedge", x, y, 7, 1)
+    st.put("tree", 90, 29, 2, 2); st.put("tree", 112, 29, 2, 2)
+
+    # -- bailey
+    st.put("stable", 8, 40, 12, 5)
+    st.put("cart", 23, 44, 3, 2)
+    for x, y in ((28, 45), (35, 45), (28, 55), (35, 55)):
+        st.put("stall", x, y, 4, 2)
+    st.put("well", 47, 44, 2, 2)
+    st.put("forge", 108, 40, 4, 3)
+    st.put("anvil", 106, 44)
+    for x in range(80, 95, 4):
+        for y in (54, 57):
+            st.put("dummy", x, y)
+    st.put("target", 100, 57, 2, 1); st.put("target", 105, 57, 2, 1)
+    for x, y in ((57, 42), (66, 42), (57, 58), (66, 58), (57, 70), (66, 70)):
+        st.put("lantern", x, y)
+
+    st.put("cart", 23, 56, 3, 2)
+    st.put("trough", 8, 47, 3, 1)
+    for x, y in ((12, 57), (14, 57), (13, 56)):   # a stacked pile, no gaps to get stuck in
+        st.put("hay", x, y, 2, 1)
+    for x, y in ((42, 56), (74, 45), (88, 44)):
+        st.put("stall", x, y, 4, 2)
+    st.put("statue", 76, 55, 2, 2)
+    st.put("tent", 113, 55, 4, 4)
+    road = [(55, 40, 70, 75)]  # main road from the drawbridge to the throne hall
+    st.scatter("hay", 6, {DIRT}, sizes=((1, 1), (2, 1)), margin=2, keep_clear=road + [(20, 40, 60, 49)])
+    st.scatter("barrel", 12, {DIRT}, margin=2, keep_clear=road)
+    st.scatter("crate", 10, {DIRT}, margin=2, keep_clear=road)
+    st.scatter("bush", 10, {GRASS}, margin=2, keep_clear=road + [(84, 23, 118, 37)])
+    st.scatter("tree", 12, {GRASS}, sizes=((2, 2), (3, 3)), margin=2, keep_clear=[(52, 69, 72, 75), (84, 23, 118, 37)])
+    st.seal_pockets()
+    st.pick_enemy_spawns(52)   # MaxAtOnce 40, plus headroom
+
+    render(st)
+    return st
 
 
-WRITES_TMX = False  # castle_floor.tmx carries hand-authored collision
+# ---- props ---------------------------------------------------------------------------------------------------------
+
+
+def throne(d, x0, y0, x1, y1, rng):
+    cx = (x0 + x1) / 2
+    rect(d, x0 + 8, y0 + 4, x1 - 8, y1 - 4, (70, 14, 22), GOLD, LINE)                   # high back
+    for i, h in ((-1, 16), (0, 28), (1, 16)):                                            # crown finials
+        px = cx + i * 26
+        poly(d, [(px - 10, y0 + 20), (px, y0 + 20 - h), (px + 10, y0 + 20)], GOLD, EDGE, 2)
+    rect(d, x0 + 20, y0 + 34, x1 - 20, y1 - 10, CARPET, EDGE, 3)                           # cushion
+    for side in (-1, 1):                                                                 # arm rests
+        ax = cx + side * (x1 - x0) * 0.36
+        rect(d, ax - 9, y0 + 40, ax + 9, y1 - 6, (90, 20, 28), GOLD, 3)
+    circle(d, cx, y0 + 26, 7, (120, 220, 255), EDGE, 2)                                  # jewel
+
+
+def brazier(d, x0, y0, x1, y1, rng):
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    poly(d, [(cx - 12, cy - 4), (cx + 12, cy - 4), (cx + 7, y1 - 3), (cx - 7, y1 - 3)], (80, 70, 60), EDGE, 3)
+    for r, c in ((10, (255, 110, 30)), (6, (255, 190, 70)), (3, (255, 245, 180))):
+        poly(d, [(cx - r, cy - 3), (cx, cy - 3 - r * 2), (cx + r, cy - 3)], c)
+
+
+def armour(d, x0, y0, x1, y1, rng):
+    cx = (x0 + x1) / 2
+    steel, dark = (170, 176, 190), (90, 96, 110)
+    rect(d, cx - 12, y1 - 6, cx + 12, y1 - 2, (80, 70, 60), EDGE, 2)                     # plinth
+    poly(d, [(cx - 10, y0 + 14), (cx + 10, y0 + 14), (cx + 7, y1 - 7), (cx - 7, y1 - 7)], steel, EDGE, 2)
+    circle(d, cx, y0 + 9, 7, steel, EDGE, 2)                                              # helm
+    hline(d, cx - 4, cx + 4, y0 + 9, dark, 2)                                             # visor
+    vline(d, cx + 13, y0 + 3, y1 - 4, dark, 2)                                            # halberd
+    poly(d, [(cx + 13, y0 + 2), (cx + 18, y0 + 8), (cx + 13, y0 + 11)], steel, EDGE, 1)
+
+
+def bed(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 4, y0 + 2, x1 - 4, y1 - 4, WOOD_D, EDGE, 3)                               # frame
+    rect(d, x0 + 8, y0 + 18, x1 - 8, y1 - 8, (70, 90, 150), EDGE, 2)                       # blanket
+    rect(d, x0 + 10, y0 + 6, x1 - 10, y0 + 18, (226, 222, 214), EDGE, 2)                   # pillow
+    hline(d, x0 + 8, x1 - 8, y0 + 40, (96, 116, 176), 3)
+
+
+def chest(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 4, y0 + 8, x1 - 4, y1 - 3, WOOD_C, EDGE, 3)
+    rect(d, x0 + 4, y0 + 8, x1 - 4, y0 + 15, WOOD_D, EDGE, 2)
+    rect(d, (x0 + x1) / 2 - 3, y0 + 13, (x0 + x1) / 2 + 3, y0 + 19, GOLD)
+
+
+def table(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 2, y0 + 6, x1 - 2, y1 - 6, WOOD_C, EDGE, LINE)
+    for x in range(int(x0) + 28, int(x1) - 16, 40):                                        # plates and cups
+        circle(d, x, y0 + 22, 7, (220, 216, 206), EDGE, 2)
+        circle(d, x + 14, y0 + 38, 4, (200, 160, 60), EDGE, 1)
+    hline(d, x0 + 6, x1 - 6, (y0 + y1) / 2 + 4, WOOD_D, 2)
+
+
+def rack(d, x0, y0, x1, y1, rng):
+    """Weapon rack: a beam with blades and spears standing in it."""
+    steel = (180, 190, 205)
+    if x1 - x0 >= y1 - y0:
+        rect(d, x0 + 2, y1 - 12, x1 - 2, y1 - 4, WOOD_D, EDGE, 2)
+        for x in range(int(x0) + 10, int(x1) - 4, 14):
+            vline(d, x, y0 + 4, y1 - 10, steel, 3)
+            poly(d, [(x - 4, y0 + 8), (x, y0 + 1), (x + 4, y0 + 8)], steel)
+    else:
+        rect(d, x0 + 4, y0 + 2, x0 + 12, y1 - 2, WOOD_D, EDGE, 2)
+        for y in range(int(y0) + 10, int(y1) - 4, 14):
+            hline(d, x0 + 10, x1 - 3, y, steel, 3)
+            poly(d, [(x1 - 8, y - 4), (x1 - 1, y), (x1 - 8, y + 4)], steel)
+
+
+def shelf(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 1, y0 + 2, x1 - 1, y1 - 2, WOOD_D, EDGE, 3)
+    x = x0 + 5
+    while x < x1 - 6:
+        w = rng.uniform(4, 8)
+        rect(d, x, y0 + 6 + rng.uniform(0, 5), x + w, y1 - 6,
+             rng.choice([(150, 40, 40), (40, 80, 140), (60, 120, 60), (170, 130, 50), (110, 60, 120)]))
+        x += w + 1
+
+
+def desk(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 4, y0 + 6, x1 - 4, y1 - 6, WOOD_C, EDGE, LINE)
+    rect(d, x0 + 14, y0 + 16, x0 + 40, y0 + 34, (236, 228, 200), EDGE, 2)                  # open book
+    vline(d, x0 + 27, y0 + 16, y0 + 34, EDGE, 2)
+    rect(d, x1 - 26, y0 + 14, x1 - 20, y0 + 28, (236, 228, 200))                          # candle
+    circle(d, x1 - 23, y0 + 11, 3, (255, 200, 90))
+
+
+def candelabra(d, x0, y0, x1, y1, rng):
+    cx = (x0 + x1) / 2
+    vline(d, cx, y0 + 12, y1 - 4, GOLD, 3)
+    hline(d, cx - 10, cx + 10, y0 + 14, GOLD, 3)
+    for dx in (-10, 0, 10):
+        rect(d, cx + dx - 2, y0 + 6, cx + dx + 2, y0 + 14, (240, 234, 214))
+        circle(d, cx + dx, y0 + 4, 2, (255, 210, 110))
+
+
+def fountain(d, x0, y0, x1, y1, rng):
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    r = (x1 - x0) / 2 - 6
+    circle(d, cx, cy, r, (150, 146, 158), EDGE, LINE)                                      # basin rim
+    circle(d, cx, cy, r - 12, (70, 140, 190), EDGE, 3)                                     # water
+    for k in range(3):
+        d.arc([s(cx - r + 24 + k * 8), s(cy - 10 + k * 12), s(cx + r - 40 - k * 6), s(cy + 6 + k * 12)], 200, 340,
+              fill=(150, 200, 235), width=2)
+    circle(d, cx, cy, 20, (150, 146, 158), EDGE, 3)                                        # centre plinth
+    circle(d, cx, cy, 8, (190, 230, 250))
+
+
+def hedge(d, x0, y0, x1, y1, rng):
+    d.rounded_rectangle([s(x0 + 2), s(y0 + 3), s(x1 - 2), s(y1 - 2)], radius=s(12), fill=(50, 100, 54),
+                        outline=LEAF_EDGE, width=3)
+    for x in range(int(x0) + 10, int(x1) - 6, 12):
+        circle(d, x + rng.uniform(-2, 2), y0 + 12 + rng.uniform(-2, 2), 5, (70, 128, 66))
+        if rng.random() < 0.3:
+            circle(d, x, y0 + 20, 3, (230, 90, 110))                                       # roses
+
+
+def stable(d, x0, y0, x1, y1, rng):
+    roof_bottom = y0 + (y1 - y0) * 0.55
+    rect(d, x0 + 2, roof_bottom, x1 - 2, y1 - 2, WOOD_C, EDGE, LINE)                         # front wall
+    for x in range(int(x0) + 16, int(x1) - 30, 64):                                          # stall doors
+        rect(d, x, roof_bottom + 10, x + 44, y1 - 4, WOOD_D, EDGE, 3)
+        d.line([(s(x), s(roof_bottom + 10)), (s(x + 44), s(y1 - 4))], fill=EDGE, width=2)
+    rect(d, x0, y0 + 2, x1, roof_bottom + 4, (120, 60, 46), EDGE, LINE)                      # shingled roof
+    for y in range(int(y0) + 12, int(roof_bottom), 12):
+        hline(d, x0 + 3, x1 - 3, y, (96, 46, 36), 2)
+    hline(d, x0, x1, y0 + 8, (150, 80, 60), 4)                                               # ridge
+
+
+def cart(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 6, y0 + 8, x1 - 16, y1 - 14, WOOD_C, EDGE, 3)
+    for x in range(int(x0) + 10, int(x1) - 20, 10):                                          # hay load
+        circle(d, x + 4, y0 + 18 + rng.uniform(-3, 3), 7, (214, 184, 90))
+    for wx in (x0 + 18, x1 - 30):
+        circle(d, wx, y1 - 10, 9, (80, 56, 36), EDGE, 3)
+    d.line([(s(x1 - 16), s(y0 + 24)), (s(x1 - 2), s(y0 + 20))], fill=WOOD_D, width=4)       # shafts
+
+
+def stall(d, x0, y0, x1, y1, rng):
+    """Market stall: a counter of goods under a striped awning."""
+    rect(d, x0 + 4, y0 + (y1 - y0) * 0.5, x1 - 4, y1 - 4, WOOD_C, EDGE, 3)
+    for x in range(int(x0) + 12, int(x1) - 8, 14):
+        circle(d, x, y0 + (y1 - y0) * 0.5 + 10, 5, rng.choice([(220, 70, 60), (240, 190, 60), (110, 180, 70)]))
+    stripe = rng.choice([((200, 50, 50), (236, 226, 210)), ((50, 90, 170), (236, 226, 210)), ((60, 130, 70), (236, 226, 210))])
+    w = (x1 - x0 - 4) / 8
+    for k in range(8):
+        rect(d, x0 + 2 + k * w, y0 + 3, x0 + 2 + (k + 1) * w, y0 + (y1 - y0) * 0.42, stripe[k % 2])
+    rect(d, x0 + 2, y0 + 3, x1 - 2, y0 + (y1 - y0) * 0.42, None, EDGE, 3)
+
+
+def well(d, x0, y0, x1, y1, rng):
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2 + 4
+    circle(d, cx, cy, 26, (140, 136, 148), EDGE, LINE)
+    circle(d, cx, cy, 16, (24, 30, 44))
+    rect(d, cx - 28, y0 + 4, cx + 28, y0 + 12, WOOD_D, EDGE, 2)                            # windlass beam
+    vline(d, cx, y0 + 12, cy - 4, (170, 150, 110), 2)
+
+
+def forge(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 4, y0 + 6, x1 - 4, y1 - 4, (84, 80, 88), EDGE, LINE)
+    rect(d, x0 + 20, y0 + 36, x1 - 20, y1 - 12, (255, 120, 50), EDGE, 3)                    # hearth
+    rect(d, x0 + 32, y0 + 44, x1 - 32, y1 - 18, (255, 210, 110))
+    rect(d, x1 - 36, y0 + 2, x1 - 14, y0 + 30, (70, 66, 74), EDGE, 3)                       # chimney
+
+
+def anvil(d, x0, y0, x1, y1, rng):
+    cx = (x0 + x1) / 2
+    rect(d, cx - 5, y0 + 16, cx + 5, y1 - 4, (60, 60, 70), EDGE, 2)
+    poly(d, [(cx - 13, y0 + 8), (cx + 9, y0 + 8), (cx + 14, y0 + 12), (cx + 9, y0 + 17), (cx - 13, y0 + 17)],
+         (90, 92, 104), EDGE, 2)
+
+
+def barrel(d, x0, y0, x1, y1, rng):
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    circle(d, cx, cy, 12, WOOD_C, EDGE, 3)
+    d.ellipse([s(cx - 12), s(cy - 5), s(cx + 12), s(cy + 5)], outline=(70, 70, 80), width=2)
+    circle(d, cx, cy, 5, WOOD_D)
+
+
+def crate(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 4, y0 + 4, x1 - 4, y1 - 4, (160, 124, 80), EDGE, 3)
+    d.line([(s(x0 + 5), s(y0 + 5)), (s(x1 - 5), s(y1 - 5))], fill=WOOD_D, width=3)
+    d.line([(s(x1 - 5), s(y0 + 5)), (s(x0 + 5), s(y1 - 5))], fill=WOOD_D, width=3)
+
+
+def hay(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 3, y0 + 6, x1 - 3, y1 - 4, (214, 184, 90), EDGE, 3)
+    for x in range(int(x0) + 8, int(x1) - 4, 6):
+        vline(d, x, y0 + 9, y1 - 7, (186, 156, 70), 2)
+    hline(d, x0 + 3, x1 - 3, (y0 + y1) / 2, (130, 90, 50), 2)
+
+
+def dummy(d, x0, y0, x1, y1, rng):
+    cx = (x0 + x1) / 2
+    vline(d, cx, y0 + 8, y1 - 3, WOOD_D, 4)
+    hline(d, cx - 11, cx + 11, y0 + 15, WOOD_D, 4)
+    d.ellipse([s(cx - 7), s(y0 + 12), s(cx + 7), s(y1 - 6)], fill=(200, 170, 100), outline=EDGE, width=2)
+    circle(d, cx, y0 + 7, 5, (200, 170, 100), EDGE, 2)
+
+
+def target(d, x0, y0, x1, y1, rng):
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    rect(d, cx - 22, cy + 4, cx + 22, y1 - 2, (186, 156, 70), EDGE, 2)                     # straw butt
+    for r, c in ((15, (240, 236, 226)), (10, (200, 50, 50)), (5, GOLD)):
+        circle(d, cx, cy - 2, r, c, EDGE, 2)
+
+
+def trough(d, x0, y0, x1, y1, rng):
+    rect(d, x0 + 3, y0 + 6, x1 - 3, y1 - 4, WOOD_D, EDGE, 3)
+    rect(d, x0 + 8, y0 + 10, x1 - 8, y1 - 9, (70, 130, 170))
+
+
+def statue(d, x0, y0, x1, y1, rng):
+    """A knight on a plinth, sword planted."""
+    cx = (x0 + x1) / 2
+    stone, shade = (160, 158, 170), (116, 114, 128)
+    rect(d, x0 + 8, y1 - 22, x1 - 8, y1 - 3, shade, EDGE, LINE)
+    rect(d, x0 + 4, y1 - 28, x1 - 4, y1 - 20, stone, EDGE, 3)
+    poly(d, [(cx - 14, y1 - 28), (cx - 10, y0 + 22), (cx + 10, y0 + 22), (cx + 14, y1 - 28)], stone, EDGE, 3)
+    circle(d, cx, y0 + 14, 9, stone, EDGE, 3)
+    vline(d, cx, y0 + 26, y1 - 30, shade, 4)
+    hline(d, cx - 8, cx + 8, y0 + 30, shade, 3)
+
+
+def tent(d, x0, y0, x1, y1, rng):
+    """A striped pavilion seen from above: four canvas panels meeting at a peak."""
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    a, b = (200, 50, 50), (236, 226, 210)
+    pts = [(x0 + 6, y0 + 6), (x1 - 6, y0 + 6), (x1 - 6, y1 - 6), (x0 + 6, y1 - 6)]
+    for i in range(4):
+        poly(d, [pts[i], pts[(i + 1) % 4], (cx, cy)], a if i % 2 else b, EDGE, 3)
+    circle(d, cx, cy, 6, GOLD, EDGE, 2)
+    poly(d, [(cx, cy - 4), (cx + 22, cy - 12), (cx, cy - 18)], BANNER, EDGE, 2)           # pennant
+
+
+def tower(d, cx, cy, r, bottom):
+    """A round tower: its lit, crenellated top at (cx, cy) over a brick body running down to `bottom`."""
+    rect(d, cx - r, cy, cx + r, bottom, BRICK, EDGE, LINE)
+    for y in range(int(cy) + 14, int(bottom), 16):
+        hline(d, cx - r + 3, cx + r - 3, y, MORTAR, 2)
+    for x in (cx - r * 0.45, cx + r * 0.45):
+        rect(d, x - 3, cy + 18, x + 3, min(bottom - 6, cy + 40), (20, 18, 28))           # arrow slits
+    circle(d, cx, cy, r, LIP, EDGE, LINE)
+    circle(d, cx, cy, r * 0.72, TOP, EDGE, 3)
+    for k in range(10):                                                                  # merlons
+        a = k / 10 * math.tau
+        circle(d, cx + math.cos(a) * r * 0.86, cy + math.sin(a) * r * 0.86, r * 0.1, (150, 152, 170), EDGE, 1)
+    circle(d, cx, cy, r * 0.2, BANNER, EDGE, 2)                                            # flag on the roof
+
+
+# ---- render --------------------------------------------------------------------------------------------------------
+
+
+def slabs(st, d, fill, seam, w=64, h=32, vary=10):
+    """Staggered rectangular flagstones with a little colour variation."""
+    rng = st.rng
+    for row, y in enumerate(range(0, st.H, h)):
+        off = (w // 2) if row % 2 else 0
+        for x in range(-off, st.W, w):
+            k = rng.randint(-vary, vary)                     # brightness only, so the stone stays one hue
+            c = tuple(max(0, min(255, v + k)) for v in fill)
+            rect(d, x, y, x + w, y + h, c)
+            hline(d, x, x + w, y, seam, 2)
+            vline(d, x, y, y + h, seam, 2)
+
+
+def render(st):
+    rng = st.rng
+    torches = []
+
+    # wall tops: big ashlar blocks
+    lay, d = st.layer(TOP)
+    slabs(st, d, TOP, TOP_SEAM, 96, 48, 6)
+    st.paint(lay, st.mask(BOUND))
+
+    # floors
+    lay, d = st.layer((0, 0, 0))
+    slabs(st, d, (96, 92, 108), (78, 74, 90))
+    props.cracks(st, d, (74, 70, 86), 0.03, 2)
+    st.paint(lay, st.mask(STONE))
+
+    lay, d = st.layer((118, 114, 122))
+    for x, y in props.points(st, props.density(st, 4.5)):
+        r = rng.uniform(5, 9)
+        d.ellipse([s(x - r), s(y - r * 0.8), s(x + r), s(y + r * 0.8)],
+                  fill=rng.choice([(140, 134, 138), (130, 126, 132), (150, 142, 140)]), outline=(96, 92, 100), width=2)
+    st.paint(lay, st.mask(COBBLE))
+
+    lay, d = st.layer(WOOD_C)
+    for row, y in enumerate(range(0, st.H, 16)):
+        hline(d, 0, st.W, y, WOOD_D, 2)
+        for x in range((row * 37) % 96, st.W, 96):
+            vline(d, x, y, y + 16, WOOD_D, 2)
+    props.specks(st, d, [(150, 112, 74)], 0.3, 1, 2)
+    st.paint(lay, st.mask(WOOD))
+
+    lay, d = st.layer((196, 192, 206))
+    for y in range(0, st.H, TILE):
+        for x in range(0, st.W, TILE):
+            if (x // TILE + y // TILE) % 2:
+                rect(d, x, y, x + TILE, y + TILE, (164, 160, 180))
+    st.paint(lay, st.mask(MARBLE))
+
+    lay, d = st.layer((98, 150, 74))
+    props.tile_grid(st, d, (92, 143, 70))
+    props.tufts(st, d, (122, 174, 88), 0.7)
+    props.specks(st, d, [(236, 214, 110), (232, 150, 170), (240, 240, 235)], 0.1, 2, 3)
+    st.paint(lay, st.mask(GRASS))
+
+    lay, d = st.layer((150, 122, 90))
+    props.tile_grid(st, d, (142, 115, 84))
+    props.specks(st, d, [(126, 100, 72), (172, 144, 108)], 0.8, 2, 4)
+    props.tufts(st, d, (140, 150, 80), 0.05)
+    st.paint(lay, st.mask(DIRT))
+
+    lay, d = st.layer((52, 96, 124))
+    props.ripples(st, d, (100, 150, 180), 0.5)
+    st.paint(lay, st.mask(WATER))
+    st.outline(st.mask(WATER), (40, 76, 104), 10)
+
+    lay, d = st.layer((0, 0, 0))
+    props.planks(st, d, [(x, y) for y in range(st.th) for x in range(st.tw) if st.code(x, y) == BRIDGE],
+                 (122, 86, 54), (78, 52, 32), across_x=False)
+    st.paint(lay, st.mask(BRIDGE))
+
+    # -- floor dressing (walkable): dais, carpets, rugs
+    d = st.d
+    hx0, hy0, hx1, hy1 = HALL
+    rect(d, 54 * TILE, hy0 * TILE, 71 * TILE, 11 * TILE, (120, 112, 130), EDGE, 3)          # dais
+    for k in (1, 2):
+        hline(d, 54 * TILE + 3, 71 * TILE - 3, 11 * TILE - k * 10, (104, 96, 114), 2)
+    rect(d, 60 * TILE + 6, 9 * TILE, 64 * TILE - 6, 40 * TILE, CARPET, GOLD, 4)             # carpet to the throne
+    rect(d, 97 * TILE + 8, 8 * TILE, 105 * TILE - 8, 20 * TILE, (60, 50, 120), GOLD, 3)     # chapel aisle runner
+    rect(d, 15 * TILE, 12 * TILE, 26 * TILE, 18 * TILE, (120, 40, 44), (200, 160, 70), 3)   # mess rug
+    d.ellipse([s(18 * TILE), s(27 * TILE), s(28 * TILE), s(34 * TILE)], fill=(50, 70, 120), outline=GOLD, width=3)
+    for x, y in props.points(st, props.density(st, 0.05)):                                  # straw about the stables
+        if st.code(int(x // TILE), int(y // TILE)) == DIRT and x < 32 * TILE:
+            d.line([(s(x), s(y)), (s(x + rng.uniform(-8, 8)), s(y + rng.uniform(-4, 4)))], fill=(214, 184, 90), width=2)
+
+    # -- wall faces: two courses of brick with a crenellated lip, hung with whatever suits the room below
+    def face(d, x0, x1, y0, y1):
+        rect(d, x0, y0, x1, y1, BRICK)
+        for row, y in enumerate(range(int(y0), int(y1), 16)):
+            hline(d, x0, x1, y, MORTAR, 2)
+            for x in range(int(x0) + (16 if row % 2 else 0), int(x1), 32):
+                vline(d, x, y, y + 16, MORTAR, 2)
+        rect(d, x0, y0, x1, y0 + 8, LIP)
+        for x in range(int(x0), int(x1), 24):
+            rect(d, x + 2, y0 - 6, x + 12, y0 + 2, LIP, EDGE, 1)                             # merlons
+        hline(d, x0, x1, y0 + 8, EDGE, 2)
+        tx, ty = x0 / TILE, y1 / TILE
+        in_chapel = CHAPEL[0] <= tx < CHAPEL[2] and ty == CHAPEL[1]
+        in_hall = HALL[0] <= tx < HALL[2] and ty == HALL[1]
+        outer = ty == CURTAIN_FACE_Y
+        pitch = 110 if in_chapel else 150
+        for i, cx in enumerate(props_spaced(x0, x1, pitch)):
+            if in_chapel:                                          # stained glass
+                glass = [(200, 60, 70), (60, 110, 210), (230, 190, 70), (80, 170, 110)][i % 4]
+                d.pieslice([s(cx - 18), s(y0 + 12), s(cx + 18), s(y0 + 48)], 180, 360, fill=glass, outline=EDGE, width=3)
+                rect(d, cx - 18, y0 + 30, cx + 18, y1 - 8, glass, EDGE, 3)
+                vline(d, cx, y0 + 14, y1 - 8, EDGE, 2); hline(d, cx - 18, cx + 18, y0 + 40, EDGE, 2)
+                stained.append((cx, y1 + 60, glass))
+            elif outer and i % 2 == 0:                               # arrow slits on the curtain
+                rect(d, cx - 4, y0 + 18, cx + 4, y1 - 12, (20, 18, 28))
+            elif (i % 2 == 0) or in_hall:                            # banners
+                poly(d, [(cx - 16, y0 + 10), (cx + 16, y0 + 10), (cx + 16, y1 - 12), (cx, y1 - 4), (cx - 16, y1 - 12)],
+                     BANNER, EDGE, 3)
+                hline(d, cx - 16, cx + 16, y0 + 16, GOLD, 3)
+                circle(d, cx, y0 + 34, 7, GOLD, EDGE, 2)
+            else:                                                     # torch sconce
+                rect(d, cx - 3, y0 + 30, cx + 3, y0 + 48, (70, 60, 50), EDGE, 2)
+                poly(d, [(cx - 7, y0 + 30), (cx, y0 + 14), (cx + 7, y0 + 30)], FIRE)
+                poly(d, [(cx - 3, y0 + 30), (cx, y0 + 21), (cx + 3, y0 + 30)], (255, 240, 170))
+                torches.append((cx, y1 + 10))
+        hline(d, x0, x1, y1 - 2, EDGE, 3)
+
+    stained = []
+    st.faces({BOUND}, set(OPEN) | {WATER}, 2, face)
+
+    # towers: on the keep's corners, the curtain's ends and flanking the gatehouse
+    for cx, cy, r, bottom in ((4, 2.6, 2.3, 5.6), (121, 2.6, 2.3, 5.6), (4, 61.9, 1.8, 65), (121, 61.9, 1.8, 65),
+                              (56.5, 62.7, 1.6, 65), (67.5, 62.7, 1.6, 65)):
+        tower(st.d, cx * TILE, cy * TILE, r * TILE, bottom * TILE)
+
+    open_mask = st.mask(*OPEN)
+    st.glow(torches, 70, (255, 190, 110), 0.3, open_mask)
+    for cx, cy, glass in stained:
+        st.glow([(cx, cy)], 64, glass, 0.3, open_mask)
+    lights = [((tx + w / 2) * TILE, (ty + h / 2) * TILE) for kind, tx, ty, w, h, kw in st.objects
+              if kind in ("brazier", "forge", "lantern", "candelabra")]
+    st.glow(lights, 80, (255, 180, 90), 0.35, open_mask)
+    st.outline(open_mask)
+
+    st.draw_objects({
+        "throne": throne, "brazier": brazier, "armour": armour,
+        "pillar": partial(props.column, top=(150, 146, 160), face=(104, 100, 116), edge=EDGE),
+        "bed": bed, "chest": chest, "table": table, "rack": rack, "shelf": shelf, "desk": desk,
+        "altar": altar, "pew": pew, "candelabra": candelabra,
+        "fountain": fountain, "hedge": hedge, "tree": partial(props.tree, leaf=LEAF, edge=LEAF_EDGE),
+        "stable": stable, "cart": cart, "stall": stall, "well": well, "forge": forge, "anvil": anvil,
+        "barrel": barrel, "crate": crate, "hay": hay, "dummy": dummy, "target": target, "lantern": lantern,
+        "trough": trough, "statue": statue, "tent": tent, "bush": partial(props.bush, edge=LEAF_EDGE),
+    })
+
+
+def props_spaced(x0, x1, pitch):
+    """Centres for face decorations along a wall run, evenly spread and kept clear of its ends."""
+    n = int((x1 - x0 - 40) // pitch)
+    if n <= 0:
+        return [(x0 + x1) / 2] if x1 - x0 >= 64 else []
+    start = (x0 + x1) / 2 - (n - 1) * pitch / 2
+    return [start + i * pitch for i in range(n)]

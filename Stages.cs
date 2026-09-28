@@ -73,7 +73,7 @@ static class Stages
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.04f), (Drops.PowerSurge, 0.03f))),
         new(Maps.VolcanicCaldera, MaxAtOnce: 38, Roster((Enemies.Brute, 24), (Enemies.Tank, 11), (Enemies.Imp, 9), (Enemies.Grunt, 12), (Enemies.Sniper, 8), (Enemies.Wisp, 4)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.05f), (Drops.PowerSurge, 0.03f))),
-        new(Maps.CastleFloor, MaxAtOnce: 28, [.. Roster((Enemies.Brute, 25), (Enemies.Tank, 11), (Enemies.Imp, 8), (Enemies.Grunt, 13), (Enemies.Sniper, 9), (Enemies.Wisp, 4)), Enemies.Warlord],
+        new(Maps.CastleFloor, MaxAtOnce: 40, [.. Roster((Enemies.Brute, 28), (Enemies.Tank, 13), (Enemies.Imp, 9), (Enemies.Grunt, 14), (Enemies.Sniper, 11), (Enemies.Wisp, 5)), Enemies.Warlord],
             Loot((Drops.SmallHealth, 0.18f), (Drops.BigHealth, 0.06f), (Drops.PowerSurge, 0.03f))),
     ];
 
