@@ -13,6 +13,17 @@ class ElementalTrail(ElementType elementType, Vector2 from, Direction dr)
     float elapsed = 0;
     bool Active = true;
     Vector2 position = from;
+    Vector2 lastFront = from;
+
+    Vector2 Forward => direction switch
+    {
+        Direction.Right => new(1, 0),
+        Direction.Left => new(-1, 0),
+        Direction.Up => new(0, -1),
+        _ => new(0, 1),
+    };
+
+    Vector2 Front => position + Forward * (DrawWidth / 2);
 
     public bool IsPlaying => elapsed < Lifetime;
     public bool IsActive => Active;
@@ -39,15 +50,13 @@ class ElementalTrail(ElementType elementType, Vector2 from, Direction dr)
     public void Update(float dt)
     {
         if (!IsPlaying) return;
-        if (direction is Direction.Right) position.X += Speed * dt;
-        else if (direction is Direction.Left) position.X -= Speed * dt;
-        else if (direction is Direction.Up) position.Y -= Speed * dt;
-        else if (direction is Direction.Down) position.Y += Speed * dt;
+        position += Forward * Speed * dt;
         elapsed += dt;
-        if (elapsed >= Lifetime)
+        if (elapsed >= Lifetime || !CollisionMap.HasLineOfSight(lastFront, Front))
         {
             Active = false;
         }
+        lastFront = Front;
     }
 
     public void Draw()
