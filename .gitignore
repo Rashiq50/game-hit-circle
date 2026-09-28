@@ -485,5 +485,6 @@ $RECYCLE.BIN/
 publish/
 *.zip
 
-# Stage generator previews (tools/stages/make_stages.py)
+# Stage and enemy generator previews (tools/stages/make_stages.py, tools/enemies/make_enemies.py)
 tools/stages/out/
+tools/enemies/out/

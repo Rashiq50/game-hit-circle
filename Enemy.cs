@@ -9,7 +9,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     //
     const float SpriteRadius = 25f; // hit box of the sprite look; the strip has a lot of transparent padding around the body
     const float DrawSize = 110f;
-    const float IconRadius = 30f; // base body radius for the primitive-drawn looks; roughly the sprite's visible bulk
+    const float IconRadius = 30f; // base body radius for the generated looks (BASE_RADIUS in tools/enemies); roughly the sprite's visible bulk
     const float TargetMargin = 15f; // how far past the hit box the ultimate pick radius reaches
     const float MinTargetRadius = 45f; // so small looks are still comfortable to click
     const float IdleFps = 12f;
@@ -25,6 +25,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float ArriveDistance = 4f; // close enough to the last-seen spot to give up the chase
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
+    const float FacingDeadZone = 12f;
     // After a hit the body holds solid white for a few frames, then snaps back; a flash that starts fading at once reads as mush.
     const float HitFlashHold = 0.07f;
     const float HitFlashFade = 0.08f;
@@ -44,6 +45,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     bool TakingDamageFromTrails = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
     float hitFlash; // seconds of hit flash left
+    bool facingLeft; // the generated art faces right; mirrored while the player is to the left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
     float windup = -1; // < 0 when not swinging, otherwise seconds into the telegraph
@@ -130,6 +132,9 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         animElapsed += dt;
         hitFlash = Math.Max(0, hitFlash - dt);
         strikeLanding = false;
+        // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art.
+        float dx = player.Center.X - Center.X;
+        if (IsAlive && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
         if (holdFire) return;
 
         if (IsAlive && AggroEnabled && HasMelee) UpdateMelee(dt, player, others);
@@ -275,8 +280,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         }
         else
         {
-            float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
-            EnemyIcons.Draw(look, Center, IconRadius * scale * (1f - 0.5f * death), animElapsed, 1f - death);
+            float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : -1f;
+            EnemyIcons.Draw(look, Center, scale, animElapsed, death, facingLeft);
         }
         if (flashing) HitFlashEffect.End();
         if (IsAlive) DrawHealthBar();

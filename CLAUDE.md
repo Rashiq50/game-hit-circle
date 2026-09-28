@@ -26,6 +26,15 @@ python tools/stages/make_stages.py --tmx ...       # also regenerate existing .t
 
 Previews and a contact sheet go to `tools/stages/out/` (gitignored). The script warns when open tiles can't be reached from the spawn.
 
+Enemy art for every `EnemyLook` except the Grunt's `Sprite` is generated the same way, in the maps' style:
+
+```sh
+python tools/enemies/make_enemies.py               # every look
+python tools/enemies/make_enemies.py imp wisp      # just the named ones
+```
+
+It writes `textures/enemies/{look}_idle.png` (an 8-frame loop) and `{look}_death.png` (6 frames, played once). Frames are 256 px, which is 128 world units at 2x, with the body centred, and all art faces right (`Enemy` mirrors it to face the player). Previews go to `tools/enemies/out/` (gitignored): `contact_sheet.png` has the hit boxes drawn on, and `on_maps.png` shows every look on every stage. The generator's `LOOKS` table mirrors `EnemyIcons.BodyScale`/`HitExtent`/`TopExtent`, so change both together.
+
 ## Architecture
 
 **Frame loop** (`Program.cs`): `game.Update(dt)`, then `World.FitCamera` (called every frame because the window is resizable and starts borderless-fullscreen), then `game.DrawWorld()` inside `BeginMode2D` (world space), optionally wrapped in `BlurEffect` while paused, then `game.DrawUi()` in screen space. HUD and menus must position themselves with `Screen.Width/Height` (the actual window), never `World.Width/Height`.
@@ -52,7 +61,7 @@ Previews and a contact sheet go to `tools/stages/out/` (gitignored). The script 
 - `Enemies` holds `EnemyDef` records (stats, `EnemyAttackType`, `EnemyLook`). `EnemyDef.Spawn()` builds an `Enemy`.
 - `Stages.All` is the ordered list of `StageDef`s (map name, `MaxAtOnce`, roster, loot table). `Roster(...)` interleaves the enemy groups evenly.
 - Loot tables use `Drops.cs` (`DropDef` / `LootChance`). `Game.DropLoot` is static so dying enemies can call it.
-- Enemy looks other than `Sprite` are drawn with primitives in `EnemyIcons.cs`, which also supplies their hit-box extents.
+- Enemy looks other than `Sprite` are drawn from the generated strips in `textures/enemies/` (loaded into `Assets.EnemyArt`) by `EnemyIcons.cs`, which also supplies their size and hit-box extents.
 
 **Maps:** each map is a pair of files, `textures/stages/{name}.png` (the floor image) and `{name}.tmx` (a Tiled file). `StageMap.Load` switches maps only when the name changes. It returns false when the map is unchanged, and in that case the player keeps their position between stages. `CollisionMap.Load` parses the TMX:
 - The TMX tile grid sets `World.Width/Height`.

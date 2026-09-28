@@ -18,6 +18,12 @@ readonly record struct SpriteStrip(Texture2D Texture, int FrameSize, int FrameHe
     public void Draw(int frame, Vector2 center, float drawSize) =>
         Draw(frame, new Rectangle(center.X - drawSize / 2, center.Y - drawSize / 2, drawSize, drawSize));
 
+    /// <summary>Square draw with a tint (alpha fades it) and an optional horizontal mirror, for art that faces one way.</summary>
+    public void Draw(int frame, Vector2 center, float drawSize, Color tint, bool flipX) =>
+        Raylib.DrawTexturePro(Texture,
+            new Rectangle(frame * FrameSize, 0, flipX ? -FrameSize : FrameSize, Height),
+            new Rectangle(center.X - drawSize / 2, center.Y - drawSize / 2, drawSize, drawSize), Vector2.Zero, 0, tint);
+
     /// <summary>Draws a frame into an explicit rectangle, for sheets that aren't square and need their own anchoring.</summary>
     public void Draw(int frame, Rectangle dest) =>
         Raylib.DrawTexturePro(Texture,
