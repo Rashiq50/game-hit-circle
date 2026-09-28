@@ -76,11 +76,13 @@ The Python generator in `tools/stages/` produces both files. It keeps every edge
 - Game over does not save.
 - The Continue option is enabled when `checkpoint.Score > 0`; `SaveData.HasProgress` exists but nothing uses it.
 
+**Enemy status effects** (`StatusEffect.cs`, `EnemyBodyEffect.cs`): Burning, Frozen, Shocked, Poisoned and Stunned. `Enemy.ApplyStatus(status, seconds)` refreshes a status and never shortens it, `HasStatus` checks one, and `ClearStatuses` ends all of them. Statuses are visual only for now: nothing triggers them in play and they have no gameplay effect. Their timers tick on `worldDt`. `EnemyBodyEffect` is the single shader for the enemy body: it draws every active status look plus the hit flash in one pass, because raylib allows only one active shader. A new status needs an enum value, a bump to `StatusEffects.Count`, an entry in `StatusUniforms` and a uniform with its look in the fragment shader.
+
 **Powers** (`Power.cs`): an abstract `Power` class with a number-key toggle, a duration and a cooldown. To add a power, subclass it and add the instance to `Game.Powers`. The HUD shows `PowerSlots` (3) slots.
 
 ## Debug keys (in game)
 
-F1 shows collision walls, pits and spawns. F2 shows hit boxes. F3 toggles enemy aggro. F4 toggles god mode. Shift+F1 shows the list of debug keys. F11 toggles borderless fullscreen. Esc pauses the game; it does not quit.
+F1 shows collision walls, pits and spawns. F2 shows hit boxes. F3 toggles enemy aggro. F4 toggles god mode. F5 puts living enemies under the next status in the cycle for 5 s, and Shift+F5 applies all five at once. Shift+F1 shows the list of debug keys. F11 toggles borderless fullscreen. Esc pauses the game; it does not quit.
 
 ## Notes
 

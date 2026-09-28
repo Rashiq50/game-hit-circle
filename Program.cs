@@ -17,7 +17,7 @@ Raylib.SetExitKey(KeyboardKey.Null); // Esc is the pause key, not the quit key
 Assets.Load(); // must come after InitWindow: raylib needs a GL context to upload textures
 BlurEffect.Load();
 GrayscaleEffect.Load();
-HitFlashEffect.Load();
+EnemyBodyEffect.Load();
 StageMap.Load(Stages.Get(1).Map); // each stage switches to its own map in Game.BeginStage
 var game = new Game();
 
@@ -38,7 +38,7 @@ while (!Raylib.WindowShouldClose() && !game.QuitRequested)
 
 BlurEffect.Unload();
 GrayscaleEffect.Unload();
-HitFlashEffect.Unload();
+EnemyBodyEffect.Unload();
 StageMap.Unload();
 Assets.Unload();
 Raylib.CloseAudioDevice();

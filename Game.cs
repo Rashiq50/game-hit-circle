@@ -49,6 +49,8 @@ class Game
     bool showCollision; // F1 toggles the wall outlines
     bool showHitBoxes; // F2 toggles the player/enemy hit boxes
     bool showDebugHelp; // Shift+F1 toggles the debug key list overlay
+    StatusEffect debugStatus; // the status F5 applies next
+    const float DebugStatusDuration = 5f;
 
     public Game() => BuildMenus();
 
@@ -71,6 +73,7 @@ class Game
         if (Raylib.IsKeyPressed(KeyboardKey.F2)) showHitBoxes = !showHitBoxes;
         if (Raylib.IsKeyPressed(KeyboardKey.F3)) Enemy.AggroEnabled = !Enemy.AggroEnabled;
         if (Raylib.IsKeyPressed(KeyboardKey.F4)) player.ToggleGodMode();
+        if (Raylib.IsKeyPressed(KeyboardKey.F5) && state == GameState.Playing) ApplyDebugStatus(allAtOnce: shift);
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
         switch (state)
         {
@@ -96,6 +99,21 @@ class Game
                 gameOverMenu.Update();
                 break;
         }
+    }
+
+    /// <summary>F5 puts every living enemy under just the next status in the cycle, so each look can be judged alone;
+    /// Shift+F5 stacks all of them.</summary>
+    void ApplyDebugStatus(bool allAtOnce)
+    {
+        foreach (var enemy in enemies.Where(e => e.IsAlive))
+        {
+            enemy.ClearStatuses();
+            if (allAtOnce)
+                for (int i = 0; i < StatusEffects.Count; i++) enemy.ApplyStatus((StatusEffect)i, DebugStatusDuration);
+            else
+                enemy.ApplyStatus(debugStatus, DebugStatusDuration);
+        }
+        if (!allAtOnce) debugStatus = (StatusEffect)(((int)debugStatus + 1) % StatusEffects.Count);
     }
 
     public void DrawWorld()
@@ -175,6 +193,8 @@ class Game
             ("F2", "Hit boxes", showHitBoxes),
             ("F3", "Enemy aggro", Enemy.AggroEnabled),
             ("F4", "Player god mode", Player.GodMode),
+            ("F5", $"Enemy status: {debugStatus}", null),
+            ("Shift+F5", "All enemy statuses", null),
             ("F11", "Borderless fullscreen", null),
         ];
 

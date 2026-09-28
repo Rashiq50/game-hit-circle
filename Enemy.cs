@@ -29,6 +29,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     // After a hit the body holds solid white for a few frames, then snaps back; a flash that starts fading at once reads as mush.
     const float HitFlashHold = 0.07f;
     const float HitFlashFade = 0.08f;
+    // Status looks ease in and out rather than popping; out is slower so an expiring status visibly wears off.
+    const float StatusFadeIn = 0.1f;
+    const float StatusFadeOut = 0.25f;
+    const float ShockJitter = 1.5f; // how far the body twitches while shocked; the hit box stays put
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -36,6 +40,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         : EnemyIcons.HitExtent(look) * IconRadius * EnemyIcons.BodyScale(look);
     /// <summary>Distance from the centre to the top of the drawing, decorations included.</summary>
     readonly float visualTop = look == EnemyLook.Sprite ? DrawSize / 2 : EnemyIcons.TopExtent(look) * IconRadius * EnemyIcons.BodyScale(look);
+    /// <summary>Rough radius of the drawn body, so the status patterns scale with each look.</summary>
+    readonly float bodyRadius = look == EnemyLook.Sprite ? SpriteRadius * 1.4f : IconRadius * EnemyIcons.BodyScale(look);
     /// <summary>Mouse pick radius while choosing an ultimate target; roomier than the hit box so it's easy to land on.</summary>
     float TargetRadius => Math.Max(MinTargetRadius, Math.Max(halfSize.X, halfSize.Y) + TargetMargin);
     EnemyState state = EnemyState.Idle;
@@ -45,6 +51,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     bool TakingDamageFromTrails = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
     float hitFlash; // seconds of hit flash left
+    // Indexed by StatusEffect: seconds left, and the eased 0-1 strength the shader draws with.
+    readonly float[] statusTime = new float[StatusEffects.Count];
+    readonly float[] statusLevel = new float[StatusEffects.Count];
+    float statusClock; // world-time seconds that animate the status looks
+    Vector2 shockOffset; // body draw offset while shocked
     bool facingLeft; // the generated art faces right; mirrored while the player is to the left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
@@ -100,6 +111,48 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         strikeLanding = false;
         chaseGoal = null;
         hitFlash = 0;
+        ClearStatuses();
+    }
+
+    /// <summary>Puts the enemy under a status for at least <paramref name="duration"/> seconds; reapplying refreshes it but
+    /// never shortens what's left.</summary>
+    public void ApplyStatus(StatusEffect status, float duration)
+    {
+        int i = (int)status;
+        statusTime[i] = Math.Max(statusTime[i], duration);
+    }
+
+    public bool HasStatus(StatusEffect status) => statusTime[(int)status] > 0;
+
+    /// <summary>Ends every status at once, look included (no fade-out).</summary>
+    public void ClearStatuses()
+    {
+        Array.Clear(statusTime);
+        Array.Clear(statusLevel);
+        shockOffset = Vector2.Zero;
+    }
+
+    void UpdateStatuses(float dt)
+    {
+        statusClock += dt;
+        for (int i = 0; i < StatusEffects.Count; i++)
+        {
+            statusTime[i] = Math.Max(0, statusTime[i] - dt);
+            statusLevel[i] = statusTime[i] > 0
+                ? Math.Min(1f, statusLevel[i] + dt / StatusFadeIn)
+                : Math.Max(0f, statusLevel[i] - dt / StatusFadeOut);
+        }
+        // Rolled here rather than in Draw so the twitch stops while the world is paused or frozen.
+        shockOffset = IsAlive && HasStatus(StatusEffect.Shocked)
+            ? new Vector2(Random.Shared.NextSingle() * 2 - 1, Random.Shared.NextSingle() * 2 - 1) * ShockJitter
+            : Vector2.Zero;
+    }
+
+    bool AnyStatusShowing()
+    {
+        foreach (float level in statusLevel)
+            if (level > 0) return true;
+        return false;
     }
 
     public void ReceiveDamage(float damage, Player player)
@@ -131,6 +184,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     {
         animElapsed += dt;
         hitFlash = Math.Max(0, hitFlash - dt);
+        UpdateStatuses(dt);
         strikeLanding = false;
         // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art.
         float dx = player.Center.X - Center.X;
@@ -263,27 +317,29 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         float scale = 1f + HoverScale * hover;
         DrawShadow(scale);
         if (windup >= 0 && IsAlive) DrawWindup();
-        // Only the body flashes, and only while it's hit: each shader switch flushes raylib's batch.
-        bool flashing = hitFlash > 0;
-        if (flashing)
+        // Only the body is shaded, and only while it's hit or under a status: each shader switch flushes raylib's batch.
+        bool shaded = hitFlash > 0 || AnyStatusShowing();
+        if (shaded)
         {
             float fade = Math.Min(1f, hitFlash / HitFlashFade); // 1 through the hold, then falls to 0
-            HitFlashEffect.Begin(fade * fade, Color.White); // squared so the tail drops off fast
+            EnemyBodyEffect.Begin(Center, bodyRadius * scale, statusClock, statusLevel,
+                fade * fade, Color.White); // flash squared so the tail drops off fast
         }
+        Vector2 bodyAt = Center + shockOffset;
         if (look == EnemyLook.Sprite)
         {
             var strip = state == EnemyState.Dying ? Assets.EnemyDeath : Assets.EnemyIdle;
             int frame = state == EnemyState.Dying
                 ? strip.OneShotFrame(animElapsed, DeathDuration)
                 : strip.LoopFrame(animElapsed, IdleFps);
-            strip.Draw(frame, Center, DrawSize * scale);
+            strip.Draw(frame, bodyAt, DrawSize * scale);
         }
         else
         {
             float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : -1f;
-            EnemyIcons.Draw(look, Center, scale, animElapsed, death, facingLeft);
+            EnemyIcons.Draw(look, bodyAt, scale, animElapsed, death, facingLeft);
         }
-        if (flashing) HitFlashEffect.End();
+        if (shaded) EnemyBodyEffect.End();
         if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
     }
