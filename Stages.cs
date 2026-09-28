@@ -1,4 +1,3 @@
-/// <summary>One enemy as a stage defines it; mirrors <see cref="Enemy"/>'s constructor so a stage can spawn it directly.</summary>
 record EnemyDef(
     float Health,
     int PointDrop,
@@ -8,7 +7,7 @@ record EnemyDef(
     EnemyAttackType AttackType = EnemyAttackType.Ranged,
     float ProjectileSpeed = 280f,
     float FireRange = Enemy.DefaultFireRange,
-    float MoveSpeed = 0f, // 0 = holds its position; melee types need this to close the distance
+    float MoveSpeed = 0f,
     EnemyLook Look = EnemyLook.Sprite)
 {
     public Enemy Spawn() => new(PowerDrop, PointDrop, RangedDamage, MeleeDamage, Health, AttackType, ProjectileSpeed, FireRange, MoveSpeed, Look);
@@ -45,38 +44,41 @@ record StageDef(string Map, int MaxAtOnce, EnemyDef[] Enemies, LootChance[] Loot
 static class Stages
 {
     static EnemyDef[] Roster(params (EnemyDef Kind, int Count)[] groups) =>
-        groups.SelectMany(g => Enumerable.Repeat(g.Kind, g.Count)).ToArray();
+    [
+        .. groups.SelectMany(g => Enumerable.Range(0, g.Count).Select(i => (g.Kind, At: (i + 0.5f) / g.Count)))
+                 .OrderBy(e => e.At)
+                 .Select(e => e.Kind),
+    ];
 
     static LootChance[] Loot(params (DropDef Drop, float Chance)[] entries) =>
         entries.Select(e => new LootChance(e.Drop, e.Chance)).ToArray();
 
     static readonly StageDef[] All =
     [
-        new(Maps.ForestGlade, MaxAtOnce: 4, Roster((Enemies.Brute, 5), (Enemies.Tank, 3), (Enemies.Wisp, 2)),
+        new(Maps.ForestGlade, MaxAtOnce: 4, Roster((Enemies.Brute, 7), (Enemies.Tank, 2), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.15f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.ForestGlade, MaxAtOnce: 6, Roster((Enemies.Grunt, 3), (Enemies.Tank, 3), (Enemies.Wisp, 2)),
+        new(Maps.ForestGlade, MaxAtOnce: 5, Roster((Enemies.Brute, 8), (Enemies.Tank, 4), (Enemies.Imp, 1), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f))),
-        new(Maps.DesertRuins, MaxAtOnce: 8, Roster((Enemies.Imp, 2), (Enemies.Grunt, 2)),
+        new(Maps.DesertRuins, MaxAtOnce: 8, Roster((Enemies.Brute, 9), (Enemies.Tank, 5), (Enemies.Imp, 2), (Enemies.Grunt, 1), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f))),
-        new(Maps.DesertRuins, MaxAtOnce: 10, Roster((Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Brute, 1)),
+        new(Maps.DesertRuins, MaxAtOnce: 10, Roster((Enemies.Brute, 11), (Enemies.Tank, 5), (Enemies.Imp, 3), (Enemies.Grunt, 2), (Enemies.Wisp, 1)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.SwampBog, MaxAtOnce: 3, Roster((Enemies.Imp, 3), (Enemies.Grunt, 3), (Enemies.Brute, 2)),
+        new(Maps.SwampBog, MaxAtOnce: 8, Roster((Enemies.Brute, 12), (Enemies.Tank, 6), (Enemies.Imp, 3), (Enemies.Grunt, 3), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.SwampBog, MaxAtOnce: 13, Roster((Enemies.Grunt, 4), (Enemies.Brute, 2), (Enemies.Sniper, 2), (Enemies.Wisp, 2)),
+        new(Maps.SwampBog, MaxAtOnce: 9, Roster((Enemies.Brute, 12), (Enemies.Tank, 6), (Enemies.Imp, 3), (Enemies.Grunt, 4), (Enemies.Sniper, 1), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.40f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.FrozenCavern, MaxAtOnce: 14, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Sniper, 2), (Enemies.Tank, 2)),
+        new(Maps.FrozenCavern, MaxAtOnce: 14, Roster((Enemies.Brute, 13), (Enemies.Tank, 6), (Enemies.Imp, 4), (Enemies.Grunt, 5), (Enemies.Sniper, 2), (Enemies.Wisp, 2)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.03f), (Drops.PowerSurge, 0.02f))),
-        new(Maps.Graveyard, MaxAtOnce: 18, Roster((Enemies.Grunt, 5), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2), (Enemies.Wisp, 1)),
+        new(Maps.Graveyard, MaxAtOnce: 30, Roster((Enemies.Brute, 21), (Enemies.Tank, 10), (Enemies.Imp, 7), (Enemies.Grunt, 9), (Enemies.Sniper, 5), (Enemies.Wisp, 4)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.04f), (Drops.PowerSurge, 0.03f))),
-        new(Maps.VolcanicCaldera, MaxAtOnce: 24, Roster((Enemies.Imp, 4), (Enemies.Grunt, 4), (Enemies.Brute, 3), (Enemies.Sniper, 3), (Enemies.Tank, 2)),
+        new(Maps.VolcanicCaldera, MaxAtOnce: 38, Roster((Enemies.Brute, 24), (Enemies.Tank, 11), (Enemies.Imp, 9), (Enemies.Grunt, 12), (Enemies.Sniper, 8), (Enemies.Wisp, 4)),
             Loot((Drops.SmallHealth, 0.15f), (Drops.BigHealth, 0.05f), (Drops.PowerSurge, 0.03f))),
-        new(Maps.CastleFloor, MaxAtOnce: 25, Roster((Enemies.Grunt, 6), (Enemies.Brute, 4), (Enemies.Sniper, 4), (Enemies.Tank, 3), (Enemies.Wisp, 2), (Enemies.Warlord, 1)),
+        new(Maps.CastleFloor, MaxAtOnce: 28, [.. Roster((Enemies.Brute, 25), (Enemies.Tank, 11), (Enemies.Imp, 8), (Enemies.Grunt, 13), (Enemies.Sniper, 9), (Enemies.Wisp, 4)), Enemies.Warlord],
             Loot((Drops.SmallHealth, 0.18f), (Drops.BigHealth, 0.06f), (Drops.PowerSurge, 0.03f))),
     ];
 
     public static int Count => All.Length;
     public static bool IsLast(int stage) => stage >= Count;
 
-    /// <summary>Stages past the end reuse the last one, so a stale save can never index out of range.</summary>
     public static StageDef Get(int stage) => All[Math.Clamp(stage, 1, Count) - 1];
 }

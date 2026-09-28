@@ -55,7 +55,7 @@ def build():
     st.scatter("dead_tree", 12, {GRASS}, sizes=((2, 2), (3, 3)), margin=2, keep_clear=clear)
     st.scatter("headstone", 10, {GRASS}, margin=2, keep_clear=clear)
     st.seal_pockets()
-    st.pick_enemy_spawns(26)
+    st.pick_enemy_spawns(40)   # MaxAtOnce 30, plus headroom so spawns rarely double up
 
     render(st)
     return st

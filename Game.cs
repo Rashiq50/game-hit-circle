@@ -9,7 +9,6 @@ class Game
     const int ScreenMargin = 40;
     const float EnemyCooldown = 2.0f;
     public void Shake() => shakeTimeLeft = ShakeDuration;
-    /// <summary>Menus show the whole map; once a round starts the camera tracks the player (and holds there on game over).</summary>
     public bool CameraFollowsPlayer => state is not (GameState.Welcome or GameState.MainMenu);
 
     public Vector2 ShakeOffset => shakeTimeLeft > 0
@@ -32,6 +31,7 @@ class Game
     SaveData checkpoint = SaveFile.Load();
     int stage;
     int spawned; // enemies of the current stage's roster that have entered the field so far
+    float spawnDelay; // time left before the next replacement may enter
     StageDef CurrentStage => Stages.Get(stage);
     const float BannerDuration = 1.8f;
     const float BannerFadeIn = 0.2f;
@@ -243,6 +243,7 @@ class Game
         FloatingNumbers.Clear();
         loot = CurrentStage.Loot;
         spawned = 0;
+        spawnDelay = 0;
         int total = CurrentStage.TotalEnemies;
         ShowBanner($"Stage {stage}", $"{total} enem{(total == 1 ? "y" : "ies")} incoming");
     }
@@ -265,15 +266,18 @@ class Game
         then?.Invoke();
     }
 
-    void SpawnEnemies()
+    void SpawnEnemies(float dt)
     {
         if (BannerShowing) return;
         var def = CurrentStage;
-        if (spawned < def.TotalEnemies && enemies.Count < def.MaxAtOnce)
+        spawnDelay = Math.Max(0, spawnDelay - dt);
+        bool openingWave = spawned < def.MaxAtOnce;
+        if (spawned < def.TotalEnemies && enemies.Count < def.MaxAtOnce && (openingWave || spawnDelay <= 0))
         {
             Enemy enemy = def.Enemies[spawned++].Spawn();
             enemy.Respawn(player, enemies);
             enemies.Add(enemy);
+            if (!openingWave) spawnDelay = EnemyCooldown;
         }
     }
 
@@ -368,7 +372,7 @@ class Game
         ultStrike.Update(dt);
         popup.Update(worldDt);
         FloatingNumbers.Update(worldDt);
-        SpawnEnemies();
+        SpawnEnemies(worldDt);
 
         var enemy = player.IsUsingUltimate
             ? enemies.Find(e => e.IsSelectedForUlt)

@@ -56,7 +56,7 @@ def build():
     st.scatter("boulder", 10, {ASH}, sizes=((1, 1), (2, 2), (3, 2)), margin=2, keep_clear=clear)
     st.scatter("vent", 6, {ASH}, sizes=((2, 2),), margin=2, keep_clear=clear)
     st.seal_pockets()
-    st.pick_enemy_spawns(30)
+    st.pick_enemy_spawns(48)   # MaxAtOnce 38, plus headroom
 
     render(st)
     return st
