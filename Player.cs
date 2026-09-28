@@ -195,6 +195,7 @@ class Player
                 if (en.Overlaps(trail.Bounds))
                 {
                     en.ReceiveDamage(10, this);
+                    en.ApplyStatus(StatusEffect.Burning, 3, 2);
                     trail.Stop();
                 }
             }
