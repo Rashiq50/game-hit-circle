@@ -1,7 +1,7 @@
 using System.Numerics;
 using Raylib_cs;
 
-enum DamageStyle { EnemyHit, CriticalHit, PlayerHit, Heal, Power }
+enum DamageStyle { EnemyHit, CriticalHit, PlayerHit, Heal, Power, DamageOverTime }
 
 class FloatingNumber
 {
@@ -46,6 +46,7 @@ class FloatingNumber
         DamageStyle.PlayerHit => Color.Red,
         DamageStyle.Heal => Color.Lime,
         DamageStyle.Power => Color.Yellow,
+        DamageStyle.DamageOverTime => new Color(255, 120, 150, 255), // crimson, so ticks read apart from sword hits
         _ => Color.White,
     };
 

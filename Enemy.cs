@@ -37,6 +37,9 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float FrozenSpeed = 0.5f;
     const float PoisonedSpeed = 0.75f;
     const float ShockedSpeed = 0.75f;
+    /// <summary>Damage each DamageOverTime tick deals when the caller doesn't give its own.</summary>
+    public const float DefaultDotDamage = 5f;
+    const float DotInterval = 1f; // seconds between DamageOverTime ticks; the first lands one interval after it's applied
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -60,6 +63,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     readonly float[] statusLevel = new float[StatusEffects.Count];
     float statusClock; // world-time seconds that animate the status looks
     Vector2 shockOffset; // body draw offset while shocked
+    float dotDamage = DefaultDotDamage; // per tick, while DamageOverTime is on
+    float dotTimer; // seconds toward the next DamageOverTime tick
     bool facingLeft; // the generated art faces right; mirrored while the player is to the left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
@@ -126,6 +131,14 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         statusTime[i] = Math.Max(statusTime[i], duration);
     }
 
+    /// <summary>DamageOverTime dealing <paramref name="damagePerTick"/> every <see cref="DotInterval"/> seconds. Reapplying while
+    /// it's on keeps the harder-hitting of the two. Plain <see cref="ApplyStatus"/> on DamageOverTime uses the default.</summary>
+    public void ApplyDamageOverTime(float duration, float damagePerTick = DefaultDotDamage)
+    {
+        dotDamage = HasStatus(StatusEffect.DamageOverTime) ? Math.Max(dotDamage, damagePerTick) : damagePerTick;
+        ApplyStatus(StatusEffect.DamageOverTime, duration);
+    }
+
     public bool HasStatus(StatusEffect status) => statusTime[(int)status] > 0;
 
     /// <summary>Multiplier on how fast the enemy moves and attacks (0 while stunned). Scales the clock that movement,
@@ -149,6 +162,25 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         Array.Clear(statusTime);
         Array.Clear(statusLevel);
         shockOffset = Vector2.Zero;
+        dotDamage = DefaultDotDamage;
+        dotTimer = 0;
+    }
+
+    void UpdateDamageOverTime(float dt, Player player)
+    {
+        if (!HasStatus(StatusEffect.DamageOverTime))
+        {
+            // Wore off: the next application starts a fresh interval at the default damage unless it sets its own.
+            dotDamage = DefaultDotDamage;
+            dotTimer = 0;
+            return;
+        }
+        dotTimer += dt;
+        while (dotTimer >= DotInterval && IsAlive)
+        {
+            dotTimer -= DotInterval;
+            ReceiveDamage(dotDamage, player, DamageStyle.DamageOverTime);
+        }
     }
 
     void UpdateStatuses(float dt)
@@ -174,10 +206,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         return false;
     }
 
-    public void ReceiveDamage(float damage, Player player)
+    /// <param name="style">How the damage number looks; by default a normal hit, or a crit during the ultimate.</param>
+    public void ReceiveDamage(float damage, Player player, DamageStyle? style = null)
     {
         FloatingNumbers.Show(new Vector2(Center.X, Center.Y - visualTop * 0.5f), damage,
-            player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit);
+            style ?? (player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit));
         CurrentHp = Math.Max(0, CurrentHp - damage);
         hitFlash = HitFlashHold + HitFlashFade;
         if (CurrentHp <= 0 && state != EnemyState.Dying)
@@ -211,6 +244,8 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         float dx = player.Center.X - Center.X;
         if (IsAlive && !stunned && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
         if (holdFire) return;
+        // After the hold: a tick mid-ultimate could kill the target before the strike lands.
+        UpdateDamageOverTime(dt, player);
 
         // Stunned enemies skip acting outright: a zero clock alone would still let a melee enemy start a swing it never finishes.
         bool canAct = IsAlive && AggroEnabled && !stunned;

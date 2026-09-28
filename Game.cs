@@ -193,7 +193,7 @@ class Game
             ("F2", "Hit boxes", showHitBoxes),
             ("F3", "Enemy aggro", Enemy.AggroEnabled),
             ("F4", "Player god mode", Player.GodMode),
-            ("F5", $"Enemy status: {debugStatus}", null),
+            ("F5", $"Status: {debugStatus}", null),
             ("Shift+F5", "All enemy statuses", null),
             ("F11", "Borderless fullscreen", null),
         ];
