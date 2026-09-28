@@ -25,6 +25,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float ArriveDistance = 4f; // close enough to the last-seen spot to give up the chase
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
+    const float HitFlashDuration = 0.12f; // how long the body flashes white after taking damage
     public Vector2 Center;
     // Half-size of the hit box: matches the solid part of the body, so each look gets a box that fits what it draws.
     readonly Vector2 halfSize = look == EnemyLook.Sprite
@@ -40,6 +41,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     bool SelectedForUlt = false;
     bool TakingDamageFromTrails = false;
     float hoverLevel; // 0 = not hovered, 1 = fully grown; eased so the scale-up doesn't pop
+    float hitFlash; // seconds of hit flash left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
     float windup = -1; // < 0 when not swinging, otherwise seconds into the telegraph
@@ -93,6 +95,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         windup = -1;
         strikeLanding = false;
         chaseGoal = null;
+        hitFlash = 0;
     }
 
     public void ReceiveDamage(float damage, Player player)
@@ -100,6 +103,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         FloatingNumbers.Show(new Vector2(Center.X, Center.Y - visualTop * 0.5f), damage,
             player.IsUsingUltimate ? DamageStyle.CriticalHit : DamageStyle.EnemyHit);
         CurrentHp = Math.Max(0, CurrentHp - damage);
+        hitFlash = HitFlashDuration;
         if (CurrentHp <= 0 && state != EnemyState.Dying)
         {
             Kill(player);
@@ -122,6 +126,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public void Update(float dt, Player player, IReadOnlyList<Enemy> others, bool holdFire = false)
     {
         animElapsed += dt;
+        hitFlash = Math.Max(0, hitFlash - dt);
         strikeLanding = false;
         if (holdFire) return;
 
@@ -251,6 +256,9 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         float scale = 1f + HoverScale * hover;
         DrawShadow(scale);
         if (windup >= 0 && IsAlive) DrawWindup();
+        // Only the body flashes, and only while it's hit: each shader switch flushes raylib's batch.
+        bool flashing = hitFlash > 0;
+        if (flashing) HitFlashEffect.Begin(hitFlash / HitFlashDuration, Color.White);
         if (look == EnemyLook.Sprite)
         {
             var strip = state == EnemyState.Dying ? Assets.EnemyDeath : Assets.EnemyIdle;
@@ -264,6 +272,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
             float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : 0f;
             EnemyIcons.Draw(look, Center, IconRadius * scale * (1f - 0.5f * death), animElapsed, 1f - death);
         }
+        if (flashing) HitFlashEffect.End();
         if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
     }
