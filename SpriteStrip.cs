@@ -1,7 +1,8 @@
 using System.Numerics;
 using Raylib_cs;
 
-/// <summary>A horizontal sprite sheet of frames, plus the frame arithmetic every animation needs.</summary>
+/// <summary>A horizontal sprite sheet of frames, plus the frame arithmetic every animation needs. A sheet can stack
+/// several strips as rows (one per direction, say), all the same length.</summary>
 /// <param name="FrameHeight">Only for sheets whose frames aren't square; 0 means "same as <paramref name="FrameSize"/>".</param>
 readonly record struct SpriteStrip(Texture2D Texture, int FrameSize, int FrameHeight = 0)
 {
@@ -19,9 +20,9 @@ readonly record struct SpriteStrip(Texture2D Texture, int FrameSize, int FrameHe
         Draw(frame, new Rectangle(center.X - drawSize / 2, center.Y - drawSize / 2, drawSize, drawSize));
 
     /// <summary>Square draw with a tint (alpha fades it) and an optional horizontal mirror, for art that faces one way.</summary>
-    public void Draw(int frame, Vector2 center, float drawSize, Color tint, bool flipX) =>
+    public void Draw(int frame, Vector2 center, float drawSize, Color tint, bool flipX, int row = 0) =>
         Raylib.DrawTexturePro(Texture,
-            new Rectangle(frame * FrameSize, 0, flipX ? -FrameSize : FrameSize, Height),
+            new Rectangle(frame * FrameSize, row * Height, flipX ? -FrameSize : FrameSize, Height),
             new Rectangle(center.X - drawSize / 2, center.Y - drawSize / 2, drawSize, drawSize), Vector2.Zero, 0, tint);
 
     /// <summary>Draws a frame into an explicit rectangle, for sheets that aren't square and need their own anchoring.</summary>

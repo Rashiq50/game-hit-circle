@@ -21,7 +21,10 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     const float ChaseRange = 600f; // how far a melee enemy notices the player; line of sight is still required
     const float MeleeReach = 20f; // how far past its hit box a melee swing lands
     const float MeleeWindup = 0.45f; // telegraph before the swing lands, long enough to step away or parry
+    const float MeleeArc = 120f; // degrees a swing sweeps, centred on where the player stood as the windup began
     const float MeleeInterval = 1.2f; // seconds between swings
+    const float AttackRecovery = 0.3f; // follow-through once a blow lands or a shot leaves; the enemy stands its ground through it
+    const float SwingFlash = 0.15f; // how long a swing's arc flashes on the ground once the blow lands
     const float ArriveDistance = 4f; // close enough to the last-seen spot to give up the chase
     const float HoverScale = 0.2f; // how much the sprite grows when hovered as an ultimate target
     const float HoverEaseTime = 0.12f;
@@ -74,7 +77,12 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     bool facingLeft; // the generated art faces right; mirrored while the player is to the left
     readonly List<EnemyProjectile> projectiles = [];
     float meleeCooldown;
-    float windup = -1; // < 0 when not swinging, otherwise seconds into the telegraph
+    // The attack in progress, melee or ranged: seconds into it (< 0 when not attacking), and the way it points. A swing
+    // fixes its aim as the windup starts, so the telegraph shows where it will land; a shot follows the player until it leaves.
+    float attackTime = -1;
+    bool meleeAttack;
+    bool attackReleased; // the blow has landed or the shot has left; what's left is follow-through
+    Vector2 aim = Vector2.UnitX;
     bool strikeLanding; // the swing lands this frame; Game resolves it against the player's parry and body
     Vector2? chaseGoal; // last place the player was seen; kept after losing sight so the enemy checks where they went
 
@@ -84,10 +92,20 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     public bool IsAlive => state == EnemyState.Idle;
     public bool IsDead => state == EnemyState.Dying && animElapsed > DeathDuration;
     public Rectangle Bounds => BoundsAt(Center);
-    Rectangle MeleeBounds => new(Center.X - halfSize.X - MeleeReach, Center.Y - halfSize.Y - MeleeReach,
-        (halfSize.X + MeleeReach) * 2, (halfSize.Y + MeleeReach) * 2);
+    /// <summary>How far a swing reaches from the centre: the body's longer half-size plus <see cref="MeleeReach"/>.</summary>
+    float MeleeRadius => Math.Max(halfSize.X, halfSize.Y) + MeleeReach;
     bool HasRanged => attackType is EnemyAttackType.Ranged or EnemyAttackType.Both;
     bool HasMelee => attackType is EnemyAttackType.Melee or EnemyAttackType.Both;
+    bool Attacking => attackTime >= 0;
+    float AttackWindup => meleeAttack ? MeleeWindup : EnemyIcons.CastWindup(look);
+    /// <summary>0..1 through the windup, then 1..2 through the follow-through.</summary>
+    float AttackProgress => attackTime < AttackWindup
+        ? attackTime / AttackWindup
+        : 1f + (attackTime - AttackWindup) / AttackRecovery;
+    /// <summary>The attack's way to the nearest of the four, which picks the row of the attack sheet the art comes from.</summary>
+    Direction AttackDirection => Math.Abs(aim.Y) > Math.Abs(aim.X)
+        ? aim.Y > 0 ? Direction.Down : Direction.Up
+        : aim.X < 0 ? Direction.Left : Direction.Right;
 
     Rectangle BoundsAt(Vector2 center) =>
         new(center.X - halfSize.X, center.Y - halfSize.Y, halfSize.X * 2, halfSize.Y * 2);
@@ -122,7 +140,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         animElapsed = 0;
         fireCooldown = FireInterval;
         meleeCooldown = 0;
-        windup = -1;
+        attackTime = -1;
         strikeLanding = false;
         chaseGoal = null;
         hitFlash = 0;
@@ -268,10 +286,11 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         strikeLanding = false;
         float actionSpeed = ActionSpeed;
         bool locked = actionSpeed <= 0; // stunned or frozen solid
-        if (locked) windup = -1; // interrupts a swing in progress
-        // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art.
+        if (locked || !AggroEnabled) attackTime = -1; // interrupts an attack in progress
+        // Turn to face the player, with a dead zone so standing right above or below doesn't flicker the art. An attack
+        // keeps the facing it was aimed with.
         float dx = player.Center.X - Center.X;
-        if (IsAlive && !locked && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
+        if (IsAlive && !locked && !Attacking && Math.Abs(dx) > FacingDeadZone) facingLeft = dx < 0;
         if (holdFire) return;
         // After the hold: a tick mid-ultimate could kill the target before the strike lands.
         UpdateDamageOverTime(dt, player);
@@ -279,32 +298,14 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         // A locked enemy skips acting outright: a zero clock alone would still let a melee enemy start a swing it never finishes.
         bool canAct = IsAlive && AggroEnabled && !locked;
         float actDt = dt * actionSpeed;
-        if (canAct && HasMelee) UpdateMelee(actDt, player, others);
-
-        if (canAct && HasRanged)
+        if (canAct)
         {
-            fireCooldown -= actDt;
-            if (!CanSee(player, fireRange))
-            {
-                fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
-            }
-            List<Vector2> targets = [];
-            if (rangedType.Equals(RangedAttackType.Targeting))
-            {
-                targets.Add(player.Center);
-            }
-            else if (rangedType.Equals(RangedAttackType.Directional))
-            {
-                // Figure out directional fucntionality
-            }
-            if (fireCooldown <= 0)
-            {
-                foreach (var target in targets)
-                {
-                    projectiles.Add(new EnemyProjectile(Center, target, rangedDamage, projectileSpeed));
-                }
-                fireCooldown += FireInterval;
-            }
+            if (HasMelee) meleeCooldown -= actDt;
+            if (HasRanged) fireCooldown -= actDt;
+            // One attack at a time: an enemy with both waits out one before it starts the other.
+            if (!Attacking && HasMelee) UpdateMelee(actDt, player, others);
+            if (!Attacking && HasRanged) UpdateRanged(player);
+            if (Attacking) UpdateAttack(actDt, player);
         }
 
         foreach (var p in projectiles) p.Update(dt);
@@ -313,28 +314,124 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     void UpdateMelee(float dt, Player player, IReadOnlyList<Enemy> others)
     {
-        meleeCooldown -= dt;
-        if (windup >= 0)
-        {
-            windup += dt;
-            if (windup >= MeleeWindup)
-            {
-                windup = -1;
-                strikeLanding = true;
-                meleeCooldown = MeleeInterval;
-            }
-            return;
-        }
-
         bool seen = CanSee(player, ChaseRange);
         if (seen) chaseGoal = player.Center;
 
-        if (Raylib.CheckCollisionRecs(MeleeBounds, player.Bounds))
+        if (InReach(player.Bounds))
         {
-            if (seen && meleeCooldown <= 0) windup = 0;
+            if (seen && meleeCooldown <= 0) StartAttack(melee: true, player);
             return;
         }
         if (chaseGoal is Vector2 goal && !MoveToward(goal, dt, player, others)) chaseGoal = null;
+    }
+
+    void UpdateRanged(Player player)
+    {
+        if (!CanSee(player, fireRange))
+            fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
+        // Wind up early enough that the shot leaves right as the cooldown runs out.
+        else if (fireCooldown <= EnemyIcons.CastWindup(look))
+            StartAttack(melee: false, player);
+    }
+
+    void StartAttack(bool melee, Player player)
+    {
+        meleeAttack = melee;
+        attackReleased = false;
+        attackTime = 0;
+        AimAt(player.Center);
+    }
+
+    /// <summary>Runs the windup, lands the blow or looses the shot, then plays out the follow-through.</summary>
+    void UpdateAttack(float dt, Player player)
+    {
+        if (!meleeAttack && !attackReleased)
+        {
+            // A shot that loses sight of the player is called off, the same as one that never had it.
+            if (!CanSee(player, fireRange))
+            {
+                attackTime = -1;
+                fireCooldown = Math.Max(fireCooldown, SightReactionDelay);
+                return;
+            }
+            AimAt(player.Center);
+        }
+        attackTime += dt;
+        if (!attackReleased && attackTime >= AttackWindup)
+        {
+            attackReleased = true;
+            if (meleeAttack)
+            {
+                strikeLanding = true;
+                meleeCooldown = MeleeInterval;
+            }
+            else Fire(player);
+        }
+        if (attackTime >= AttackWindup + AttackRecovery) attackTime = -1;
+    }
+
+    void Fire(Player player)
+    {
+        List<Vector2> targets = [];
+        if (rangedType.Equals(RangedAttackType.Targeting))
+        {
+            targets.Add(player.Center);
+        }
+        else if (rangedType.Equals(RangedAttackType.Directional))
+        {
+            // Figure out directional fucntionality
+        }
+        Vector2 from = Muzzle(player);
+        foreach (var target in targets)
+        {
+            projectiles.Add(new EnemyProjectile(from, target, rangedDamage, projectileSpeed));
+        }
+        fireCooldown = FireInterval;
+    }
+
+    /// <summary>Where a shot leaves: the weapon in the art's release frame, mirrored with the facing. Falls back to the centre
+    /// when the player is nearer than that (the shot would start behind them) or a wall is in the way.</summary>
+    Vector2 Muzzle(Player player)
+    {
+        Vector2 offset = EnemyIcons.Muzzle(look, AttackDirection) * IconRadius * EnemyIcons.BodyScale(look);
+        if (facingLeft) offset.X = -offset.X;
+        Vector2 at = Center + offset;
+        bool clear = Vector2.DistanceSquared(Center, player.Center) > offset.LengthSquared()
+            && CollisionMap.HasLineOfSight(Center, at);
+        return clear ? at : Center;
+    }
+
+    void AimAt(Vector2 target)
+    {
+        if (target != Center) aim = Vector2.Normalize(target - Center);
+        // A sideways attack is drawn facing the way it goes; up and down keep whichever way the enemy already faced.
+        if (AttackDirection is Direction.Left or Direction.Right) facingLeft = aim.X < 0;
+    }
+
+    Vector2 NearestPoint(Rectangle box) =>
+        Vector2.Clamp(Center, new(box.X, box.Y), new(box.X + box.Width, box.Y + box.Height));
+
+    bool InReach(Rectangle box) => Vector2.Distance(NearestPoint(box), Center) <= MeleeRadius;
+
+    /// <summary>Whether any of <paramref name="box"/> lies in the swing: within <see cref="MeleeRadius"/> of the centre and
+    /// inside <see cref="MeleeArc"/> around the aim. Sampled on a grid plus the nearest point, which is plenty for boxes the
+    /// size of the player's.</summary>
+    bool SwingHits(Rectangle box)
+    {
+        const int Steps = 4;
+        if (InSwing(NearestPoint(box))) return true;
+        for (int i = 0; i <= Steps; i++)
+            for (int j = 0; j <= Steps; j++)
+                if (InSwing(new Vector2(box.X + box.Width * i / Steps, box.Y + box.Height * j / Steps))) return true;
+        return false;
+    }
+
+    bool InSwing(Vector2 p)
+    {
+        Vector2 d = p - Center;
+        float dist = d.Length();
+        if (dist > MeleeRadius) return false;
+        return dist < 1f || Vector2.Dot(d / dist, aim) >= MathF.Cos(float.DegreesToRadians(MeleeArc / 2));
     }
 
     bool MoveToward(Vector2 goal, float dt, Player player, IReadOnlyList<Enemy> others)
@@ -361,7 +458,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
 
     public bool BlockMelee(Player player)
     {
-        if (!strikeLanding || !player.IsParrying || !Raylib.CheckCollisionRecs(MeleeBounds, player.ParryBounds)) return false;
+        if (!strikeLanding || !player.IsParrying || !SwingHits(player.ParryBounds)) return false;
         strikeLanding = false;
         Raylib.PlaySound(Assets.SwordBlockSound);
         return true;
@@ -371,7 +468,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
     {
         if (!strikeLanding) return false;
         strikeLanding = false;
-        if (!Raylib.CheckCollisionRecs(MeleeBounds, player.Bounds)) return false;
+        if (!SwingHits(player.Bounds)) return false;
         player.ReceiveDamage(meleeDamage);
         return true;
     }
@@ -404,7 +501,7 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         }
         float scale = 1f + HoverScale * hover;
         DrawShadow(scale);
-        if (windup >= 0 && IsAlive) DrawWindup();
+        if (Attacking && meleeAttack && IsAlive) DrawSwing();
         // Only the body is shaded, and only while it's hit or under a status: each shader switch flushes raylib's batch.
         bool shaded = hitFlash > 0 || AnyStatusShowing();
         if (shaded)
@@ -425,19 +522,32 @@ class Enemy(float powerDrop, int pointDrop, float rangedDamage, float meleeDamag
         else
         {
             float death = state == EnemyState.Dying ? Math.Clamp(animElapsed / DeathDuration, 0f, 1f) : -1f;
-            EnemyIcons.Draw(look, bodyAt, scale, animElapsed, death, facingLeft);
+            AttackPose? attack = Attacking && IsAlive ? new(meleeAttack, AttackDirection, AttackProgress) : null;
+            EnemyIcons.Draw(look, bodyAt, scale, animElapsed, death, facingLeft, attack);
         }
         if (shaded) EnemyBodyEffect.End();
         if (IsAlive) DrawHealthBar();
         foreach (var p in projectiles) p.Draw();
     }
 
-    void DrawWindup()
+    /// <summary>The swing's telegraph on the ground: the arc it will sweep, filling out through the windup, then flashing as
+    /// the blow lands.</summary>
+    void DrawSwing()
     {
-        float t = Math.Clamp(windup / MeleeWindup, 0f, 1f);
-        float reach = Math.Max(halfSize.X, halfSize.Y) + MeleeReach;
-        Raylib.DrawCircleV(Center, reach * t, Raylib.Fade(Color.Red, 0.3f));
-        Raylib.DrawRing(Center, reach - 2f, reach, 0, 360, 48, Raylib.Fade(Color.Red, 0.4f + 0.5f * t));
+        const int Segments = 24;
+        float reach = MeleeRadius;
+        float mid = float.RadiansToDegrees(MathF.Atan2(aim.Y, aim.X));
+        float from = mid - MeleeArc / 2, to = mid + MeleeArc / 2;
+        if (!attackReleased)
+        {
+            float t = Math.Clamp(attackTime / MeleeWindup, 0f, 1f);
+            Raylib.DrawCircleSector(Center, reach, from, to, Segments, Raylib.Fade(Color.Red, 0.12f));
+            Raylib.DrawCircleSector(Center, reach * t, from, to, Segments, Raylib.Fade(Color.Red, 0.3f));
+            Raylib.DrawRing(Center, reach - 2f, reach, from, to, Segments, Raylib.Fade(Color.Red, 0.4f + 0.5f * t));
+            return;
+        }
+        float flash = 1f - Math.Clamp((attackTime - MeleeWindup) / SwingFlash, 0f, 1f);
+        if (flash > 0) Raylib.DrawCircleSector(Center, reach, from, to, Segments, Raylib.Fade(Color.White, 0.45f * flash));
     }
 
     void DrawShadow(float scale)

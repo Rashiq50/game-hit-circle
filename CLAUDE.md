@@ -33,7 +33,11 @@ python tools/enemies/make_enemies.py               # every look
 python tools/enemies/make_enemies.py imp wisp      # just the named ones
 ```
 
-It writes `textures/enemies/{look}_idle.png` (an 8-frame loop) and `{look}_death.png` (6 frames, played once). Frames are 256 px, which is 128 world units at 2x, with the body centred, and all art faces right (`Enemy` mirrors it to face the player). Previews go to `tools/enemies/out/` (gitignored): `contact_sheet.png` has the hit boxes drawn on, and `on_maps.png` shows every look on every stage. The generator's `LOOKS` table mirrors `EnemyIcons.BodyScale`/`HitExtent`/`TopExtent`, so change both together.
+It writes `textures/enemies/{look}_idle.png` (an 8-frame loop) and `{look}_death.png` (6 frames, played once). Frames are 256 px, which is 128 world units at 2x, with the body centred, and all art faces right (`Enemy` mirrors it to face the player).
+
+It also writes an attack sheet for each kind of attack a look has, `{look}_melee.png` and/or `{look}_ranged.png`. A sheet has three rows (side, down, up) of 8 frames: 5 of windup, the frame where the blow lands or the shot leaves, and 2 of follow-through. Each sheet is cropped to fit its own swings. Its frames stay square and centred on the body, and the game sizes them from their pixel size. Ranged windups are the same in every row, so the game can switch rows while it follows the player.
+
+Previews go to `tools/enemies/out/` (gitignored): `contact_sheet.png` has the hit boxes drawn on, `on_maps.png` shows every look on every stage, and `attacks.png` shows every attack sheet with the swing reach and the muzzles drawn on. The generator's `LOOKS` table mirrors `EnemyIcons.BodyScale`/`HitExtent`/`TopExtent`/`Muzzle`, so change both together. The script warns when a shot's actual release point drifts from `LOOKS`.
 
 ## Architecture
 
@@ -50,6 +54,10 @@ It writes `textures/enemies/{look}_idle.png` (an 8-frame loop) and `{look}_death
 **Combat resolution is split across files:**
 - `Game.UpdatePlaying` applies the player's swing damage, but only on the frame where `Player.SwingLanded` is true (the impact frame of the axe animation), not for the whole attack.
 - `Game.UpdatePlaying` also resolves enemy attacks by calling methods on `Enemy`: `ConsumeProjectileHit`/`BlockProjectile` and `BlockMelee`/`ConsumeMeleeHit`. A parry (E) that blocks an attack is worth 1 point.
+- An enemy makes one attack at a time (`Enemy.UpdateAttack`): a windup, then the moment the blow lands or the shot leaves, then a follow-through (`AttackRecovery`) during which it stands still.
+  - A melee swing fixes its aim on the player when the windup starts. It hits a `MeleeArc` (120°) wedge out to `MeleeRadius`, and the red telegraph on the ground shows that wedge.
+  - A ranged shot follows the player through its windup (`EnemyIcons.CastWindup`) and leaves from the weapon (`EnemyIcons.Muzzle`). It falls back to the body centre when the player is closer than the muzzle or a wall is in the way.
+  - The aim's dominant axis picks the attack sheet's row.
 - Every finished swing spawns an `ElementalTrail`. Its damage is applied inside `Player.Update`, not in `Game`.
 - Living enemies' bounds are passed to `Player.Update` as solid obstacles.
 
